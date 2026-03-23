@@ -1,106 +1,93 @@
 import React, { useState, useRef } from 'react';
 import {
-  StyleSheet, Text, View, TouchableOpacity,
+  StyleSheet, Text, View, TextInput, TouchableOpacity,
   SafeAreaView, ScrollView, Alert, ActivityIndicator, Animated,
 } from 'react-native';
 import { C } from '../constants/theme';
-import { callClaude, parseJSON } from '../utils/api';
-import {
-  ScreenHeader, Field, SectionTitle,
-  MacroGrid, CalorieHero, TipsBox, SecondaryButton,
-} from '../components/UI';
+import { callAI, parseJSON } from '../utils/api';
+import { Auth } from '../utils/auth';
 
-const FALLBACK_RESULT = {
-  meal: 'Unknown Meal', calories: 520, protein: 38, carbs: 45, fat: 14,
-  fiber: 5, sugar: 4, sodium: 680, servingSize: '1 plate (~400g)',
-  healthScore: 7, tips: ['Good protein source', 'Consider reducing sodium'],
-};
-
-const SYSTEM_PROMPT = `You are a professional nutritionist AI. When given a food description, return ONLY a JSON object (no markdown, no explanation) with this exact shape:
-{
-  "meal": "meal name",
-  "calories": number,
-  "protein": number,
-  "carbs": number,
-  "fat": number,
-  "fiber": number,
-  "sugar": number,
-  "sodium": number,
-  "servingSize": "e.g. 1 plate (~450g)",
-  "healthScore": number between 1-10,
-  "tips": ["tip1", "tip2"]
-}
-All macros in grams. Be realistic and accurate.`;
-
-export default function FoodScannerScreen({ onBack }) {
-  const [phase, setPhase] = useState('idle');
+export default function FoodScannerScreen({ user, onUserUpdate }) {
+  const [phase, setPhase]       = useState('idle');
   const [mealName, setMealName] = useState('');
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [result, setResult]     = useState(null);
+  const [loading, setLoading]   = useState(false);
   const spinAnim = useRef(new Animated.Value(0)).current;
   const spinLoop = useRef(null);
 
   const startScan = async () => {
     if (!mealName.trim()) {
-      Alert.alert('Describe your meal', 'Type what you see on the plate.'); return;
+      Alert.alert('Describe your meal', 'Type what you see on the plate first.'); return;
     }
     setLoading(true);
     setPhase('scanning');
-
     spinLoop.current = Animated.loop(
-      Animated.timing(spinAnim, { toValue: 1, duration: 1500, useNativeDriver: true })
+      Animated.timing(spinAnim, { toValue: 1, duration: 1200, useNativeDriver: true })
     );
     spinLoop.current.start();
 
     try {
-      const raw = await callClaude(SYSTEM_PROMPT, `Analyze this meal: ${mealName}`);
-      setResult(parseJSON(raw, FALLBACK_RESULT));
+      const raw = await callAI(
+        'You are a professional nutritionist. Return ONLY valid JSON with no markdown and no extra text. Use this exact structure: {"meal":"name","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"sugar":number,"sodium":number,"servingSize":"description","healthScore":number,"tips":["tip1","tip2"]}. All macros in grams. healthScore is 1-10.',
+        'Analyze this meal: ' + mealName
+      );
+      const parsed = parseJSON(raw, null);
+      if (!parsed || !parsed.calories) {
+        Alert.alert('Could not analyze', 'Please describe the meal in more detail and try again.');
+        setPhase('idle'); return;
+      }
+      setResult(parsed);
       setPhase('result');
-    } catch {
-      Alert.alert('Error', 'Could not analyze the meal. Please try again.');
+      const updated = await Auth.updateUser(user.email, {
+        mealsScanned: (user.mealsScanned || 0) + 1,
+      });
+      await Auth.logActivity(user.email);
+      if (updated) onUserUpdate(updated);
+    } catch (e) {
+      Alert.alert('Error', e.message || 'Could not reach AI. Check your internet and API key.');
       setPhase('idle');
     } finally {
       setLoading(false);
       spinLoop.current?.stop();
+      spinAnim.setValue(0);
     }
   };
 
   const reset = () => { setPhase('idle'); setMealName(''); setResult(null); };
-
   const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
-    <SafeAreaView style={s.safeArea}>
-      <ScreenHeader title="Food Scanner" icon="🍽️" onBack={onBack} />
+    <SafeAreaView style={s.safe}>
+      <View style={s.titleBar}>
+        <Text style={s.titleBarText}>Food Scanner</Text>
+      </View>
       <ScrollView contentContainerStyle={s.scroll}>
 
         {phase !== 'result' && (
           <>
             <View style={s.cameraBox}>
               {loading
-                ? <Animated.View style={[s.scanRing, { transform: [{ rotate: spin }] }]} />
-                : <Text style={s.cameraPlaceholder}>📸{'\n'}Camera Preview{'\n'}(describe meal below)</Text>
+                ? <Animated.View style={[s.ring, { transform: [{ rotate: spin }] }]} />
+                : <Text style={s.cameraHint}>Describe your meal below{'\n'}to get AI nutrition analysis</Text>
               }
               <View style={s.corner_tl} /><View style={s.corner_tr} />
               <View style={s.corner_bl} /><View style={s.corner_br} />
             </View>
 
-            <Field
-              label="Describe what's on the plate"
-              placeholder="e.g. grilled salmon with quinoa and roasted vegetables"
+            <Text style={s.label}>What is on the plate?</Text>
+            <TextInput
+              style={s.input}
+              placeholder="e.g. grilled chicken with rice and salad"
+              placeholderTextColor={C.muted}
               value={mealName}
               onChangeText={setMealName}
               multiline
             />
 
-            <TouchableOpacity
-              style={[s.primaryBtn, loading && { opacity: 0.6 }]}
-              onPress={startScan}
-              disabled={loading}
-            >
+            <TouchableOpacity style={[s.btn, loading && { opacity: 0.6 }]} onPress={startScan} disabled={loading}>
               {loading
-                ? <ActivityIndicator color={C.bg} />
-                : <Text style={s.primaryBtnText}>🔍 Analyze Meal</Text>
+                ? <><ActivityIndicator color={C.bg} /><Text style={[s.btnText, { marginLeft: 8 }]}>Analyzing...</Text></>
+                : <Text style={s.btnText}>Analyze Meal</Text>
               }
             </TouchableOpacity>
           </>
@@ -111,31 +98,42 @@ export default function FoodScannerScreen({ onBack }) {
             <View style={s.resultHeader}>
               <Text style={s.resultMeal}>{result.meal}</Text>
               <Text style={s.resultServing}>{result.servingSize}</Text>
-              <View style={[s.scoreChip, {
-                backgroundColor: result.healthScore >= 7 ? C.green + '22' : C.orange + '22'
-              }]}>
-                <Text style={[s.scoreText, {
-                  color: result.healthScore >= 7 ? C.green : C.orange
-                }]}>
-                  Health Score: {result.healthScore}/10
+              <View style={[s.scoreBadge, { backgroundColor: result.healthScore >= 7 ? C.green + '22' : C.orange + '22' }]}>
+                <Text style={[s.scoreText, { color: result.healthScore >= 7 ? C.green : C.orange }]}>
+                  Health Score: {result.healthScore} / 10
                 </Text>
               </View>
             </View>
 
-            <CalorieHero calories={result.calories} />
+            <View style={s.calorieBox}>
+              <Text style={s.calorieNum}>{result.calories}</Text>
+              <Text style={s.calorieLabel}>CALORIES</Text>
+            </View>
 
-            <MacroGrid items={[
-              ['Protein', result.protein, 'g', C.blue],
-              ['Carbs',   result.carbs,   'g', C.orange],
-              ['Fat',     result.fat,     'g', C.purple],
-              ['Fiber',   result.fiber,   'g', C.green],
-              ['Sugar',   result.sugar,   'g', C.danger],
-              ['Sodium',  result.sodium,  'mg', C.muted],
-            ]} />
+            <View style={s.macroGrid}>
+              {[
+                ['Protein', result.protein, 'g',  C.blue],
+                ['Carbs',   result.carbs,   'g',  C.orange],
+                ['Fat',     result.fat,     'g',  C.purple],
+                ['Fiber',   result.fiber,   'g',  C.green],
+                ['Sugar',   result.sugar,   'g',  C.danger],
+                ['Sodium',  result.sodium,  'mg', C.muted],
+              ].map(([label, val, unit, color]) => (
+                <View key={label} style={s.macroItem}>
+                  <Text style={[s.macroVal, { color }]}>{val}<Text style={s.macroUnit}>{unit}</Text></Text>
+                  <Text style={s.macroLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
 
-            <TipsBox title="💬 Nutritionist Tips" tips={result.tips} />
+            <View style={s.tipsBox}>
+              <Text style={s.tipsTitle}>Nutritionist Tips</Text>
+              {result.tips?.map((tip, i) => <Text key={i} style={s.tip}>- {tip}</Text>)}
+            </View>
 
-            <SecondaryButton label="Scan Another Meal" onPress={reset} />
+            <TouchableOpacity style={s.secondaryBtn} onPress={reset}>
+              <Text style={s.secondaryBtnText}>Scan Another Meal</Text>
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
@@ -144,31 +142,37 @@ export default function FoodScannerScreen({ onBack }) {
 }
 
 const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: C.bg },
+  titleBar: { padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
+  titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },
   scroll: { padding: 20, paddingBottom: 40 },
-  cameraBox: {
-    height: 220, backgroundColor: C.surface, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20, borderWidth: 1, borderColor: C.border,
-    overflow: 'hidden', position: 'relative',
-  },
-  cameraPlaceholder: { color: C.muted, textAlign: 'center', fontSize: 15, lineHeight: 26 },
-  scanRing: {
-    width: 80, height: 80, borderRadius: 40,
-    borderWidth: 4, borderColor: C.green, borderTopColor: 'transparent',
-  },
-  corner_tl: { position: 'absolute', top: 16, left: 16, width: 24, height: 24, borderTopWidth: 3, borderLeftWidth: 3, borderColor: C.green, borderRadius: 4 },
-  corner_tr: { position: 'absolute', top: 16, right: 16, width: 24, height: 24, borderTopWidth: 3, borderRightWidth: 3, borderColor: C.green, borderRadius: 4 },
-  corner_bl: { position: 'absolute', bottom: 16, left: 16, width: 24, height: 24, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: C.green, borderRadius: 4 },
-  corner_br: { position: 'absolute', bottom: 16, right: 16, width: 24, height: 24, borderBottomWidth: 3, borderRightWidth: 3, borderColor: C.green, borderRadius: 4 },
-  primaryBtn: {
-    backgroundColor: C.green, paddingVertical: 16, borderRadius: 14,
-    alignItems: 'center', marginTop: 8,
-  },
-  primaryBtnText: { color: C.bg, fontSize: 16, fontWeight: '900' },
+  cameraBox: { height: 180, backgroundColor: C.surface, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 1, borderColor: C.border, position: 'relative' },
+  cameraHint: { color: C.muted, textAlign: 'center', fontSize: 14, lineHeight: 22 },
+  ring: { width: 70, height: 70, borderRadius: 35, borderWidth: 4, borderColor: C.green, borderTopColor: 'transparent' },
+  corner_tl: { position: 'absolute', top: 12, left: 12, width: 20, height: 20, borderTopWidth: 3, borderLeftWidth: 3, borderColor: C.green, borderRadius: 3 },
+  corner_tr: { position: 'absolute', top: 12, right: 12, width: 20, height: 20, borderTopWidth: 3, borderRightWidth: 3, borderColor: C.green, borderRadius: 3 },
+  corner_bl: { position: 'absolute', bottom: 12, left: 12, width: 20, height: 20, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: C.green, borderRadius: 3 },
+  corner_br: { position: 'absolute', bottom: 12, right: 12, width: 20, height: 20, borderBottomWidth: 3, borderRightWidth: 3, borderColor: C.green, borderRadius: 3 },
+  label: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 8 },
+  input: { backgroundColor: C.surface, color: C.white, padding: 14, borderRadius: 12, fontSize: 15, marginBottom: 16, borderWidth: 1, borderColor: C.border, minHeight: 80, textAlignVertical: 'top' },
+  btn: { backgroundColor: C.green, paddingVertical: 16, borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
+  btnText: { color: C.bg, fontSize: 16, fontWeight: '900' },
+  secondaryBtn: { borderWidth: 1.5, borderColor: C.green, paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 8 },
+  secondaryBtnText: { color: C.green, fontSize: 15, fontWeight: '700' },
   resultHeader: { backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 16 },
   resultMeal: { color: C.white, fontSize: 20, fontWeight: '800', marginBottom: 4 },
   resultServing: { color: C.muted, fontSize: 13, marginBottom: 12 },
-  scoreChip: { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  scoreBadge: { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
   scoreText: { fontSize: 13, fontWeight: '700' },
+  calorieBox: { backgroundColor: C.surface, borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 16 },
+  calorieNum: { color: C.green, fontSize: 56, fontWeight: '900' },
+  calorieLabel: { color: C.muted, fontSize: 12, letterSpacing: 2, marginTop: -4 },
+  macroGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
+  macroItem: { width: '30%', backgroundColor: C.card, borderRadius: 12, padding: 12, alignItems: 'center', marginRight: 6, marginBottom: 6 },
+  macroVal: { fontSize: 20, fontWeight: '800' },
+  macroUnit: { fontSize: 12, fontWeight: '400' },
+  macroLabel: { color: C.muted, fontSize: 11, marginTop: 2 },
+  tipsBox: { backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 16 },
+  tipsTitle: { color: C.white, fontWeight: '800', marginBottom: 10 },
+  tip: { color: C.muted, fontSize: 13, lineHeight: 22 },
 });

@@ -1,67 +1,79 @@
 import React from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  SafeAreaView, StatusBar, ScrollView, Dimensions,
+  SafeAreaView, ScrollView, Dimensions,
 } from 'react-native';
 import { C } from '../constants/theme';
 
 const { width } = Dimensions.get('window');
+const CARD_W = (width - 52) / 2;
 
 const FEATURES = [
-  { icon: '🍽️', label: 'Food Scanner', desc: 'Scan any meal for instant nutrition', screen: 'scanner', color: C.green },
-  { icon: '🤖', label: 'AI Coach',     desc: 'Body assessment & personalized plan', screen: 'coach',   color: C.blue },
-  { icon: '🥽', label: 'AR Workout',   desc: 'Pair glasses for live exercise guide', screen: 'ar',      color: C.purple },
-  { icon: '📊', label: 'Progress',     desc: 'Track your fitness journey',           screen: 'progress', color: C.orange },
+  { label: 'Food Scanner', desc: 'Analyze any meal with AI', screen: 'scanner', color: C.green },
+  { label: 'AI Coach',     desc: 'Get your personalized plan', screen: 'coach',   color: C.blue },
+  { label: 'AR Workout',   desc: 'Live exercise figure guide', screen: 'ar',      color: C.purple },
+  { label: 'My Profile',   desc: 'Account & stats',            screen: 'profile', color: C.orange },
 ];
 
-export default function HomeScreen({ userName, onNavigate }) {
+export default function HomeScreen({ user, onNavigate }) {
+  const joinDate = new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const streak = user.streak || 0;
+  const meals  = user.mealsScanned || 0;
+  const workouts = user.workoutsLogged || 0;
+
   return (
-    <SafeAreaView style={s.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+    <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
 
         <View style={s.header}>
           <View>
-            <Text style={s.greeting}>Good day,</Text>
-            <Text style={s.userName}>{userName} 👋</Text>
+            <Text style={s.greeting}>Welcome back,</Text>
+            <Text style={s.name}>{user.fullName}</Text>
+            <Text style={s.since}>Member since {joinDate}</Text>
           </View>
-          <View style={s.streakBadge}>
-            <Text style={s.streakText}>🔥 12-day streak</Text>
+          <View style={s.avatarCircle}>
+            <Text style={s.avatarText}>{user.fullName[0].toUpperCase()}</Text>
           </View>
         </View>
 
-        <View style={s.summaryBar}>
-          {[['1,840', 'kcal today'], ['142g', 'protein'], ['6,200', 'steps']].map(([val, lbl]) => (
-            <View key={lbl} style={s.summaryItem}>
-              <Text style={s.summaryVal}>{val}</Text>
-              <Text style={s.summaryLbl}>{lbl}</Text>
-            </View>
-          ))}
+        <View style={s.statsBar}>
+          <View style={s.statItem}>
+            <Text style={s.statVal}>{streak}</Text>
+            <Text style={s.statLbl}>{streak === 1 ? 'day streak' : 'day streak'}</Text>
+          </View>
+          <View style={s.divider} />
+          <View style={s.statItem}>
+            <Text style={s.statVal}>{meals}</Text>
+            <Text style={s.statLbl}>meals scanned</Text>
+          </View>
+          <View style={s.divider} />
+          <View style={s.statItem}>
+            <Text style={s.statVal}>{workouts}</Text>
+            <Text style={s.statLbl}>plans generated</Text>
+          </View>
         </View>
 
-        <Text style={s.sectionTitle}>Features</Text>
-        <View style={s.cardGrid}>
-          {FEATURES.map(card => (
+        {streak === 0 && (
+          <View style={s.callout}>
+            <Text style={s.calloutText}>
+              Scan your first meal or generate a workout plan to start your streak!
+            </Text>
+          </View>
+        )}
+
+        <Text style={s.sectionTitle}>What do you want to do?</Text>
+        <View style={s.grid}>
+          {FEATURES.map((card, i) => (
             <TouchableOpacity
               key={card.screen}
-              style={[s.featureCard, { borderTopColor: card.color }]}
+              style={[s.card, { borderTopColor: card.color }, i % 2 === 0 ? { marginRight: 12 } : {}]}
               onPress={() => onNavigate(card.screen)}
             >
-              <Text style={s.cardIcon}>{card.icon}</Text>
-              <Text style={s.cardLabel}>{card.label}</Text>
+              <Text style={[s.cardLabel, { color: card.color }]}>{card.label}</Text>
               <Text style={s.cardDesc}>{card.desc}</Text>
-              <View style={[s.cardArrow, { backgroundColor: card.color + '22' }]}>
-                <Text style={[s.cardArrowText, { color: card.color }]}>→</Text>
-              </View>
+              <Text style={[s.cardArrow, { color: card.color }]}>-&gt;</Text>
             </TouchableOpacity>
           ))}
-        </View>
-
-        <View style={s.tipCard}>
-          <Text style={s.tipTitle}>💡 Today's Tip</Text>
-          <Text style={s.tipText}>
-            Eating 30g of protein within 30 minutes after your workout maximizes muscle protein synthesis.
-          </Text>
         </View>
 
       </ScrollView>
@@ -70,37 +82,24 @@ export default function HomeScreen({ userName, onNavigate }) {
 }
 
 const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: C.bg },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 20, paddingTop: 16,
-  },
+  safe: { flex: 1, backgroundColor: C.bg },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 20, paddingTop: 20 },
   greeting: { color: C.muted, fontSize: 14 },
-  userName: { color: C.white, fontSize: 22, fontWeight: '800' },
-  streakBadge: { backgroundColor: C.orange + '22', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  streakText: { color: C.orange, fontSize: 13, fontWeight: '700' },
-  summaryBar: {
-    flexDirection: 'row', marginHorizontal: 20, backgroundColor: C.surface,
-    borderRadius: 16, padding: 16, marginBottom: 24, justifyContent: 'space-around',
-  },
-  summaryItem: { alignItems: 'center' },
-  summaryVal: { color: C.green, fontSize: 18, fontWeight: '800' },
-  summaryLbl: { color: C.muted, fontSize: 11, marginTop: 2 },
+  name: { color: C.white, fontSize: 22, fontWeight: '900', marginTop: 2 },
+  since: { color: C.muted, fontSize: 11, marginTop: 4 },
+  avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: C.bg, fontSize: 22, fontWeight: '900' },
+  statsBar: { flexDirection: 'row', marginHorizontal: 20, backgroundColor: C.surface, borderRadius: 16, padding: 16, marginBottom: 16, justifyContent: 'space-around', alignItems: 'center' },
+  statItem: { alignItems: 'center', flex: 1 },
+  statVal: { color: C.green, fontSize: 22, fontWeight: '900' },
+  statLbl: { color: C.muted, fontSize: 11, marginTop: 2, textAlign: 'center' },
+  divider: { width: 1, height: 36, backgroundColor: C.border },
+  callout: { marginHorizontal: 20, marginBottom: 16, backgroundColor: C.green + '18', borderRadius: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: C.green },
+  calloutText: { color: C.green, fontSize: 13, lineHeight: 20 },
   sectionTitle: { color: C.white, fontSize: 16, fontWeight: '800', marginHorizontal: 20, marginBottom: 12 },
-  cardGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12 },
-  featureCard: {
-    width: (width - 48) / 2, backgroundColor: C.card,
-    borderRadius: 16, padding: 16, borderTopWidth: 3,
-  },
-  cardIcon: { fontSize: 30, marginBottom: 10 },
-  cardLabel: { color: C.white, fontSize: 15, fontWeight: '800', marginBottom: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20 },
+  card: { width: CARD_W, backgroundColor: C.card, borderRadius: 16, padding: 16, borderTopWidth: 3, marginBottom: 12 },
+  cardLabel: { fontSize: 15, fontWeight: '800', marginBottom: 6 },
   cardDesc: { color: C.muted, fontSize: 12, lineHeight: 17, marginBottom: 12 },
-  cardArrow: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  cardArrowText: { fontSize: 16, fontWeight: 'bold' },
-  tipCard: {
-    margin: 20, backgroundColor: C.card, borderRadius: 16,
-    padding: 16, borderLeftWidth: 3, borderLeftColor: C.green,
-  },
-  tipTitle: { color: C.green, fontWeight: '800', marginBottom: 8 },
-  tipText: { color: C.muted, fontSize: 13, lineHeight: 20 },
+  cardArrow: { fontSize: 16, fontWeight: 'bold' },
 });

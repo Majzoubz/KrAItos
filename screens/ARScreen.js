@@ -4,105 +4,81 @@ import {
   SafeAreaView, ScrollView, Alert,
 } from 'react-native';
 import { C } from '../constants/theme';
-import { ScreenHeader, SectionTitle } from '../components/UI';
 
 const EXERCISES = [
-  { name: 'Squat',    muscles: 'Quads · Glutes · Core',       difficulty: 'Beginner',     icon: '🏋️' },
-  { name: 'Push-Up',  muscles: 'Chest · Triceps · Shoulders', difficulty: 'Beginner',     icon: '💪' },
-  { name: 'Deadlift', muscles: 'Back · Hamstrings · Glutes',  difficulty: 'Intermediate', icon: '🔩' },
-  { name: 'Pull-Up',  muscles: 'Lats · Biceps · Rear Delts',  difficulty: 'Intermediate', icon: '⬆️' },
-  { name: 'Plank',    muscles: 'Core · Shoulders',            difficulty: 'Beginner',     icon: '🧱' },
-  { name: 'Burpee',   muscles: 'Full Body · Cardio',          difficulty: 'Advanced',     icon: '🔥' },
+  { name: 'Squat',    muscles: 'Quads - Glutes - Core',       difficulty: 'Beginner'     },
+  { name: 'Push-Up',  muscles: 'Chest - Triceps - Shoulders', difficulty: 'Beginner'     },
+  { name: 'Deadlift', muscles: 'Back - Hamstrings - Glutes',  difficulty: 'Intermediate' },
+  { name: 'Pull-Up',  muscles: 'Lats - Biceps - Rear Delts',  difficulty: 'Intermediate' },
+  { name: 'Plank',    muscles: 'Core - Shoulders',            difficulty: 'Beginner'     },
+  { name: 'Burpee',   muscles: 'Full Body - Cardio',          difficulty: 'Advanced'     },
 ];
 
-const DIFF_COLORS = {
-  Beginner:     C.green,
-  Intermediate: C.orange,
-  Advanced:     C.danger,
-};
+const DIFF_COLORS = { Beginner: C.green, Intermediate: C.orange, Advanced: C.danger };
 
-export default function ARScreen({ onBack }) {
+export default function ARScreen() {
   const [connected, setConnected] = useState(false);
-  const [selectedEx, setSelectedEx] = useState(null);
-
-  const launchAR = () => {
-    if (!connected) {
-      Alert.alert('Not Connected', 'Please connect your AR glasses first.'); return;
-    }
-    Alert.alert('🥽 Launching AR', `${EXERCISES[selectedEx].name} figure is loading in your glasses…`);
-  };
+  const [selected, setSelected]   = useState(null);
 
   return (
-    <SafeAreaView style={s.safeArea}>
-      <ScreenHeader title="AR Workout" icon="🥽" onBack={onBack} />
+    <SafeAreaView style={s.safe}>
+      <View style={s.titleBar}>
+        <Text style={s.titleBarText}>AR Workout</Text>
+      </View>
       <ScrollView contentContainerStyle={s.scroll}>
 
-        {/* Connection Card */}
-        <View style={[s.connectCard, connected && s.connectCardActive]}>
-          <Text style={s.connectIcon}>🥽</Text>
-          <Text style={s.connectTitle}>
-            {connected ? 'AR Glasses Connected' : 'Connect AR Glasses'}
-          </Text>
+        <View style={[s.connectCard, connected && s.connectCardOn]}>
+          <Text style={s.connectTitle}>{connected ? 'AR Glasses Connected' : 'Connect AR Glasses'}</Text>
           <Text style={s.connectSub}>
             {connected
-              ? 'Your glasses are ready. Select an exercise to launch the human figure guide.'
-              : 'Pair your AR glasses via Bluetooth to see a live human figure performing exercises in your space.'}
+              ? 'Select an exercise below to launch the 3D human figure guide on your glasses.'
+              : 'Pair your AR glasses via Bluetooth to see a live human figure performing exercises in your gym.'}
           </Text>
           <TouchableOpacity
             style={[s.connectBtn, connected && { backgroundColor: C.danger }]}
             onPress={() => setConnected(!connected)}
           >
-            <Text style={s.connectBtnText}>
-              {connected ? 'Disconnect' : 'Connect via Bluetooth'}
-            </Text>
+            <Text style={s.connectBtnText}>{connected ? 'Disconnect' : 'Connect via Bluetooth'}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* How It Works */}
         {!connected && (
           <View style={s.howCard}>
-            <Text style={s.howTitle}>How AR Workout Works</Text>
+            <Text style={s.howTitle}>How it works</Text>
             {[
-              ['1', 'Pair your AR glasses via Bluetooth'],
-              ['2', 'Choose an exercise from the list below'],
-              ['3', 'A 3D human figure appears in your space'],
-              ['4', "Mirror the figure's movements in real-time"],
-            ].map(([n, t]) => (
-              <View key={n} style={s.howStep}>
-                <View style={s.howNum}><Text style={s.howNumText}>{n}</Text></View>
-                <Text style={s.howText}>{t}</Text>
-              </View>
-            ))}
+              '1. Pair your AR glasses via Bluetooth',
+              '2. Choose any exercise from the list',
+              '3. A 3D human figure appears in your space',
+              '4. Mirror the movements in real-time',
+            ].map((t, i) => <Text key={i} style={s.howStep}>{t}</Text>)}
           </View>
         )}
 
-        <SectionTitle>Exercise Library</SectionTitle>
+        <Text style={s.sectionTitle}>Exercise Library</Text>
         {EXERCISES.map((ex, i) => {
-          const diffColor = DIFF_COLORS[ex.difficulty];
+          const color = DIFF_COLORS[ex.difficulty];
           return (
-            <TouchableOpacity
-              key={i}
-              style={[s.exCard, selectedEx === i && s.exCardSelected]}
-              onPress={() => setSelectedEx(i)}
-            >
-              <Text style={s.exIcon}>{ex.icon}</Text>
-              <View style={{ flex: 1 }}>
+            <TouchableOpacity key={i} style={[s.exCard, selected === i && s.exCardOn]} onPress={() => setSelected(i)}>
+              <View style={s.exInfo}>
                 <Text style={s.exName}>{ex.name}</Text>
                 <Text style={s.exMuscles}>{ex.muscles}</Text>
               </View>
-              <View style={[s.diffBadge, { backgroundColor: diffColor + '22' }]}>
-                <Text style={[s.diffText, { color: diffColor }]}>{ex.difficulty}</Text>
+              <View style={[s.badge, { backgroundColor: color + '22' }]}>
+                <Text style={[s.badgeText, { color }]}>{ex.difficulty}</Text>
               </View>
             </TouchableOpacity>
           );
         })}
 
-        {selectedEx !== null && (
+        {selected !== null && (
           <TouchableOpacity
-            style={[s.launchBtn, !connected && { opacity: 0.4 }]}
-            onPress={launchAR}
+            style={[s.launchBtn, !connected && { opacity: 0.35 }]}
+            onPress={() => {
+              if (!connected) { Alert.alert('Not Connected', 'Connect your AR glasses first.'); return; }
+              Alert.alert('Launching AR', EXERCISES[selected].name + ' figure is loading on your glasses...');
+            }}
           >
-            <Text style={s.launchBtnText}>Launch in AR Glasses →</Text>
+            <Text style={s.launchBtnText}>Launch on AR Glasses</Text>
           </TouchableOpacity>
         )}
 
@@ -112,43 +88,27 @@ export default function ARScreen({ onBack }) {
 }
 
 const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: C.bg },
+  titleBar: { padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
+  titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },
   scroll: { padding: 20, paddingBottom: 40 },
-  connectCard: {
-    backgroundColor: C.card, borderRadius: 20, padding: 24,
-    alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: C.border,
-  },
-  connectCardActive: { borderColor: C.green },
-  connectIcon: { fontSize: 48, marginBottom: 12 },
-  connectTitle: { color: C.white, fontSize: 18, fontWeight: '800', marginBottom: 8 },
-  connectSub: { color: C.muted, fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 4 },
-  connectBtn: {
-    backgroundColor: C.green, paddingVertical: 14, paddingHorizontal: 24,
-    borderRadius: 14, marginTop: 16,
-  },
-  connectBtnText: { color: C.bg, fontSize: 15, fontWeight: '900' },
-  howCard: { backgroundColor: C.surface, borderRadius: 16, padding: 16, marginBottom: 20 },
-  howTitle: { color: C.white, fontWeight: '800', marginBottom: 14, fontSize: 15 },
-  howStep: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  howNum: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', marginRight: 12,
-  },
-  howNumText: { color: C.bg, fontWeight: '900', fontSize: 13 },
-  howText: { color: C.muted, fontSize: 14 },
-  exCard: {
-    backgroundColor: C.card, borderRadius: 14, padding: 14,
-    marginBottom: 10, flexDirection: 'row', alignItems: 'center',
-  },
-  exCardSelected: { borderWidth: 1.5, borderColor: C.green },
-  exIcon: { fontSize: 28 },
+  connectCard: { backgroundColor: C.card, borderRadius: 18, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: C.border },
+  connectCardOn: { borderColor: C.green },
+  connectTitle: { color: C.white, fontSize: 17, fontWeight: '800', marginBottom: 8 },
+  connectSub: { color: C.muted, fontSize: 13, lineHeight: 20, marginBottom: 16 },
+  connectBtn: { backgroundColor: C.green, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
+  connectBtnText: { color: C.bg, fontWeight: '900', fontSize: 14 },
+  howCard: { backgroundColor: C.surface, borderRadius: 14, padding: 16, marginBottom: 20 },
+  howTitle: { color: C.white, fontWeight: '800', marginBottom: 12 },
+  howStep: { color: C.muted, fontSize: 14, lineHeight: 26 },
+  sectionTitle: { color: C.white, fontSize: 15, fontWeight: '800', marginBottom: 12 },
+  exCard: { backgroundColor: C.card, borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center' },
+  exCardOn: { borderWidth: 1.5, borderColor: C.green },
+  exInfo: { flex: 1 },
   exName: { color: C.white, fontWeight: '800', fontSize: 15 },
-  exMuscles: { color: C.muted, fontSize: 12, marginTop: 2 },
-  diffBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  diffText: { fontSize: 11, fontWeight: '700' },
-  launchBtn: {
-    backgroundColor: C.green, paddingVertical: 16, borderRadius: 14,
-    alignItems: 'center', marginTop: 8,
-  },
+  exMuscles: { color: C.muted, fontSize: 12, marginTop: 3 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  badgeText: { fontSize: 11, fontWeight: '700' },
+  launchBtn: { backgroundColor: C.green, paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 8 },
   launchBtnText: { color: C.bg, fontSize: 16, fontWeight: '900' },
 });

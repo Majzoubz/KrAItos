@@ -1,10 +1,7 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { C } from '../constants/theme';
 
-const { width } = Dimensions.get('window');
-
-// ─── Field ────────────────────────────────────────────────────────────────────
 export function Field({ label, ...props }) {
   return (
     <>
@@ -18,12 +15,11 @@ export function Field({ label, ...props }) {
   );
 }
 
-// ─── ScreenHeader ─────────────────────────────────────────────────────────────
 export function ScreenHeader({ title, icon, onBack }) {
   return (
     <View style={s.screenHeader}>
       <TouchableOpacity style={s.backBtn} onPress={onBack}>
-        <Text style={s.backText}>←</Text>
+        <Text style={s.backText}></Text>
       </TouchableOpacity>
       <Text style={s.screenTitle}>{icon} {title}</Text>
       <View style={{ width: 36 }} />
@@ -31,12 +27,10 @@ export function ScreenHeader({ title, icon, onBack }) {
   );
 }
 
-// ─── SectionTitle ─────────────────────────────────────────────────────────────
 export function SectionTitle({ children }) {
   return <Text style={s.sectionTitle}>{children}</Text>;
 }
 
-// ─── PrimaryButton ────────────────────────────────────────────────────────────
 export function PrimaryButton({ label, onPress, disabled, children, style }) {
   return (
     <TouchableOpacity
@@ -49,7 +43,6 @@ export function PrimaryButton({ label, onPress, disabled, children, style }) {
   );
 }
 
-// ─── SecondaryButton ──────────────────────────────────────────────────────────
 export function SecondaryButton({ label, onPress }) {
   return (
     <TouchableOpacity style={s.secondaryBtn} onPress={onPress}>
@@ -58,7 +51,6 @@ export function SecondaryButton({ label, onPress }) {
   );
 }
 
-// ─── MacroGrid ────────────────────────────────────────────────────────────────
 export function MacroGrid({ items }) {
   return (
     <View style={s.macroGrid}>
@@ -74,7 +66,6 @@ export function MacroGrid({ items }) {
   );
 }
 
-// ─── CalorieHero ─────────────────────────────────────────────────────────────
 export function CalorieHero({ calories, label = 'CALORIES' }) {
   return (
     <View style={s.calorieHero}>
@@ -84,19 +75,17 @@ export function CalorieHero({ calories, label = 'CALORIES' }) {
   );
 }
 
-// ─── TipsBox ─────────────────────────────────────────────────────────────────
 export function TipsBox({ title, tips }) {
   return (
     <View style={s.tipsBox}>
       <Text style={s.tipsTitle}>{title}</Text>
       {tips?.map((tip, i) => (
-        <Text key={i} style={s.tipItem}>• {tip}</Text>
+        <Text key={i} style={s.tipItem}> {tip}</Text>
       ))}
     </View>
   );
 }
 
-// ─── ChipSelector ────────────────────────────────────────────────────────────
 export function ChipSelector({ label, options, selected, onSelect }) {
   return (
     <>
@@ -141,7 +130,7 @@ const s = StyleSheet.create({
   primaryBtnText: { color: C.bg, fontSize: 16, fontWeight: '900' },
   secondaryBtn: { borderWidth: 1.5, borderColor: C.green, paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 16 },
   secondaryBtnText: { color: C.green, fontSize: 15, fontWeight: '700' },
-  macroGrid: { flexDirection: "row", flexWrap: "wrap", marginBottom: 16 },
+  macroGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
   macroItem: { width: '30%', backgroundColor: C.card, borderRadius: 12, padding: 12, alignItems: 'center', marginRight: 6, marginBottom: 6 },
   macroVal: { fontSize: 22, fontWeight: '800' },
   macroUnit: { fontSize: 13, fontWeight: '400' },
@@ -152,9 +141,9 @@ const s = StyleSheet.create({
   tipsBox: { backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 16 },
   tipsTitle: { color: C.white, fontWeight: '800', marginBottom: 10 },
   tipItem: { color: C.muted, fontSize: 13, lineHeight: 22 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: 20 },
-  chip: { marginRight: 8, marginBottom: 8,
-    paddingHorizontal: 14, paddingVertical: 8,
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 8, marginRight: 8, marginBottom: 8,
     backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.border,
   },
   chipActive: { backgroundColor: C.green, borderColor: C.green },
