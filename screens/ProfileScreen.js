@@ -14,10 +14,12 @@ export default function ProfileScreen({ user, onLogout }) {
   const confirmLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: async () => {
-        await Auth.logout();
-        onLogout();
-      }},
+      {
+        text: 'Log Out', style: 'destructive', onPress: async () => {
+          await Auth.logout();
+          onLogout();
+        }
+      },
     ]);
   };
 
@@ -38,34 +40,32 @@ export default function ProfileScreen({ user, onLogout }) {
         </View>
 
         <View style={s.statsRow}>
-          <View style={s.statCard}>
+          <View style={[s.statCard, { borderTopColor: C.green }]}>
             <Text style={[s.statVal, { color: C.green }]}>{user.streak || 0}</Text>
             <Text style={s.statLabel}>Day Streak</Text>
           </View>
-          <View style={s.statCard}>
+          <View style={[s.statCard, { borderTopColor: C.blue }]}>
             <Text style={[s.statVal, { color: C.blue }]}>{user.mealsScanned || 0}</Text>
             <Text style={s.statLabel}>Meals Scanned</Text>
           </View>
-          <View style={s.statCard}>
+          <View style={[s.statCard, { borderTopColor: C.purple, marginRight: 0 }]}>
             <Text style={[s.statVal, { color: C.purple }]}>{user.workoutsLogged || 0}</Text>
-            <Text style={s.statLabel}>Plans Generated</Text>
+            <Text style={s.statLabel}>Plans Made</Text>
           </View>
         </View>
 
         <View style={s.infoCard}>
-          <Text style={s.infoTitle}>Account Info</Text>
-          <View style={s.infoRow}>
-            <Text style={s.infoKey}>Name</Text>
-            <Text style={s.infoVal}>{user.fullName}</Text>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={s.infoKey}>Email</Text>
-            <Text style={s.infoVal}>{user.email}</Text>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={s.infoKey}>Joined</Text>
-            <Text style={s.infoVal}>{joinDate}</Text>
-          </View>
+          <Text style={s.infoTitle}>Account Details</Text>
+          {[
+            ['Name',   user.fullName],
+            ['Email',  user.email],
+            ['Joined', joinDate],
+          ].map(([key, val]) => (
+            <View key={key} style={s.infoRow}>
+              <Text style={s.infoKey}>{key}</Text>
+              <Text style={s.infoVal} numberOfLines={1}>{val}</Text>
+            </View>
+          ))}
         </View>
 
         <TouchableOpacity style={s.logoutBtn} onPress={confirmLogout}>
@@ -89,14 +89,14 @@ const s = StyleSheet.create({
   email: { color: C.muted, fontSize: 14, marginTop: 4 },
   joined: { color: C.muted, fontSize: 12, marginTop: 4 },
   statsRow: { flexDirection: 'row', marginBottom: 20 },
-  statCard: { flex: 1, backgroundColor: C.card, borderRadius: 14, padding: 14, alignItems: 'center', marginRight: 8 },
+  statCard: { flex: 1, backgroundColor: C.card, borderRadius: 14, padding: 14, alignItems: 'center', marginRight: 8, borderTopWidth: 3 },
   statVal: { fontSize: 24, fontWeight: '900' },
   statLabel: { color: C.muted, fontSize: 11, marginTop: 4, textAlign: 'center' },
   infoCard: { backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 24 },
-  infoTitle: { color: C.green, fontWeight: '800', fontSize: 14, marginBottom: 14 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border },
+  infoTitle: { color: C.green, fontWeight: '800', fontSize: 13, marginBottom: 14 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border },
   infoKey: { color: C.muted, fontSize: 14 },
-  infoVal: { color: C.white, fontSize: 14, fontWeight: '600' },
+  infoVal: { color: C.white, fontSize: 14, fontWeight: '600', maxWidth: '60%' },
   logoutBtn: { borderWidth: 1.5, borderColor: C.danger, paddingVertical: 15, borderRadius: 14, alignItems: 'center' },
   logoutText: { color: C.danger, fontSize: 15, fontWeight: '800' },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   SafeAreaView, ScrollView, Alert, ActivityIndicator,
@@ -12,47 +12,85 @@ const GOALS    = ['Lose Fat', 'Build Muscle', 'Endurance', 'Stay Healthy'];
 const ACTIVITY = ['Sedentary', 'Light', 'Moderate', 'Active', 'Very Active'];
 
 export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
-  const [loading, setLoading]   = useState(false);
-  const [age, setAge]           = useState('');
-  const [gender, setGender]     = useState('Male');
-  const [weight, setWeight]     = useState('');
-  const [height, setHeight]     = useState('');
-  const [goal, setGoal]         = useState('Lose Fat');
-  const [activity, setActivity] = useState('Moderate');
-  const [injuries, setInjuries] = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [existingPlan, setExisting] = useState(false);
+  const [age, setAge]             = useState('');
+  const [gender, setGender]       = useState('Male');
+  const [weight, setWeight]       = useState('');
+  const [height, setHeight]       = useState('');
+  const [goal, setGoal]           = useState('Lose Fat');
+  const [activity, setActivity]   = useState('Moderate');
+  const [injuries, setInjuries]   = useState('');
+
+  useEffect(() => {
+    Storage.get(KEYS.PLAN(user.email)).then(p => {
+      if (p) {
+        setExisting(true);
+        // Pre-fill form with previous values
+        if (p.userProfile) {
+          setAge(String(p.userProfile.age || ''));
+          setGender(p.userProfile.gender || 'Male');
+          setWeight(String(p.userProfile.weight || ''));
+          setHeight(String(p.userProfile.height || ''));
+          setGoal(p.userProfile.goal || 'Lose Fat');
+          setActivity(p.userProfile.activity || 'Moderate');
+        }
+      }
+    });
+  }, []);
 
   const generate = async () => {
     if (!age || !weight || !height) {
       Alert.alert('Missing info', 'Please fill in age, weight and height.'); return;
     }
+    if (parseInt(age) < 10 || parseInt(age) > 100) {
+      Alert.alert('Invalid age', 'Please enter a valid age between 10 and 100.'); return;
+    }
+    if (parseFloat(weight) < 30 || parseFloat(weight) > 300) {
+      Alert.alert('Invalid weight', 'Please enter a valid weight in kg.'); return;
+    }
+    if (parseInt(height) < 100 || parseInt(height) > 250) {
+      Alert.alert('Invalid height', 'Please enter a valid height in cm.'); return;
+    }
+
+    const confirmMsg = existingPlan
+      ? 'This will replace your existing plan. Continue?'
+      : 'Generate your personalized plan now?';
+
+    Alert.alert('Generate Plan', confirmMsg, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Generate', onPress: doGenerate },
+    ]);
+  };
+
+  const doGenerate = async () => {
     setLoading(true);
     try {
       const raw = await callAI(
         'You are an elite fitness coach and registered dietitian. Return ONLY valid JSON with no markdown and no extra text. Use this exact structure: {"summary":"2 sentence assessment","bmi":number,"bmiCategory":"string","dailyCalories":number,"protein":number,"carbs":number,"fat":number,"mealPlan":[{"meal":"Breakfast","foods":["food1","food2"],"calories":number},{"meal":"Lunch","foods":["food1","food2"],"calories":number},{"meal":"Dinner","foods":["food1","food2"],"calories":number},{"meal":"Snack","foods":["food1"],"calories":number}],"workoutPlan":[{"day":"Monday","type":"Strength","exercises":["exercise - sets x reps"]},{"day":"Wednesday","type":"Cardio","exercises":["exercise - duration"]},{"day":"Friday","type":"Full Body","exercises":["exercise - sets x reps"]}],"weeklyTips":["tip1","tip2","tip3"]}',
-        'Age: ' + age + ', Gender: ' + gender + ', Weight: ' + weight + 'kg, Height: ' + height + 'cm, Goal: ' + goal + ', Activity: ' + activity + ', Injuries: ' + (injuries || 'None')
+        'Age: ' + age + ', Gender: ' + gender + ', Weight: ' + weight + 'kg, Height: ' + height + 'cm, Goal: ' + goal + ', Activity: ' + activity + ', Injuries: ' + (injuries.trim() || 'None')
       );
       const parsed = parseJSON(raw, null);
       if (!parsed || !parsed.dailyCalories) {
         Alert.alert('Error', 'AI returned an unexpected response. Please try again.'); return;
       }
-
-      // Save plan with metadata
       const planData = {
         ...parsed,
         generatedAt: Date.now(),
         userProfile: { age, gender, weight, height, goal, activity },
       };
       await Storage.set(KEYS.PLAN(user.email), planData);
-
       const updated = await Auth.updateUser(user.email, {
         workoutsLogged: (user.workoutsLogged || 0) + 1,
       });
-      await Auth.logActivity(user.email);
-      if (updated) onUserUpdate(updated);
+      const withStreak = await Auth.logActivity(user.email);
+      if (withStreak && onUserUpdate) onUserUpdate(withStreak);
+      else if (updated && onUserUpdate) onUserUpdate(updated);
 
+      setExisting(true);
       Alert.alert(
         'Plan Saved!',
-        'Your personalized plan has been saved. You can view it anytime from the Plan tab.',
+        'Your personalized plan is ready.',
         [{ text: 'View My Plan', onPress: () => onPlanSaved() }]
       );
     } catch (e) {
@@ -66,15 +104,23 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <Text style={s.titleBarText}>AI Coach</Text>
-        <Text style={s.titleBarSub}>Fill in your details to generate your plan</Text>
+        <Text style={s.titleBarSub}>
+          {existingPlan ? 'Update your existing plan' : 'Fill in your details to get started'}
+        </Text>
       </View>
-      <ScrollView contentContainerStyle={s.scroll}>
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+
+        {existingPlan && (
+          <View style={s.existingBanner}>
+            <Text style={s.existingBannerText}>You have an active plan. Update it below or view it in My Plan.</Text>
+          </View>
+        )}
 
         <View style={s.row}>
           <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={s.label}>Age</Text>
             <TextInput style={s.input} placeholder="25" placeholderTextColor={C.muted}
-              value={age} onChangeText={setAge} keyboardType="numeric" />
+              value={age} onChangeText={setAge} keyboardType="numeric" maxLength={3} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.label}>Gender</Text>
@@ -92,12 +138,12 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
           <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={s.label}>Weight (kg)</Text>
             <TextInput style={s.input} placeholder="70" placeholderTextColor={C.muted}
-              value={weight} onChangeText={setWeight} keyboardType="numeric" />
+              value={weight} onChangeText={setWeight} keyboardType="decimal-pad" maxLength={5} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.label}>Height (cm)</Text>
             <TextInput style={s.input} placeholder="175" placeholderTextColor={C.muted}
-              value={height} onChangeText={setHeight} keyboardType="numeric" />
+              value={height} onChangeText={setHeight} keyboardType="numeric" maxLength={3} />
           </View>
         </View>
 
@@ -120,18 +166,29 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
         </View>
 
         <Text style={s.label}>Injuries / Limitations (optional)</Text>
-        <TextInput style={[s.input, { height: 70, textAlignVertical: 'top' }]}
-          placeholder="e.g. bad knees, lower back pain" placeholderTextColor={C.muted}
-          value={injuries} onChangeText={setInjuries} multiline />
+        <TextInput
+          style={[s.input, { height: 70, textAlignVertical: 'top' }]}
+          placeholder="e.g. bad knees, lower back pain"
+          placeholderTextColor={C.muted}
+          value={injuries}
+          onChangeText={setInjuries}
+          multiline
+        />
 
         <TouchableOpacity style={[s.btn, loading && { opacity: 0.6 }]} onPress={generate} disabled={loading}>
           {loading
-            ? <><ActivityIndicator color={C.bg} /><Text style={[s.btnText, { marginLeft: 8 }]}>Generating & saving plan...</Text></>
-            : <Text style={s.btnText}>Generate & Save My Plan</Text>
+            ? <><ActivityIndicator color={C.bg} /><Text style={[s.btnText, { marginLeft: 10 }]}>Generating plan...</Text></>
+            : <Text style={s.btnText}>{existingPlan ? 'Regenerate My Plan' : 'Generate My Plan'}</Text>
           }
         </TouchableOpacity>
 
-        <Text style={s.note}>Your plan will be saved and accessible anytime from the Plan tab.</Text>
+        {existingPlan && (
+          <TouchableOpacity style={s.viewPlanBtn} onPress={() => onPlanSaved()}>
+            <Text style={s.viewPlanBtnText}>View Current Plan</Text>
+          </TouchableOpacity>
+        )}
+
+        <Text style={s.note}>Your plan will be saved and accessible anytime from the My Plan tab.</Text>
 
       </ScrollView>
     </SafeAreaView>
@@ -144,6 +201,8 @@ const s = StyleSheet.create({
   titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },
   titleBarSub: { color: C.muted, fontSize: 12, marginTop: 3 },
   scroll: { padding: 20, paddingBottom: 40 },
+  existingBanner: { backgroundColor: C.blue + '18', borderRadius: 12, padding: 12, marginBottom: 20, borderLeftWidth: 3, borderLeftColor: C.blue },
+  existingBannerText: { color: C.blue, fontSize: 13, lineHeight: 20 },
   row: { flexDirection: 'row', marginBottom: 4 },
   label: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 6, marginTop: 4 },
   input: { backgroundColor: C.surface, color: C.white, padding: 14, borderRadius: 12, fontSize: 15, marginBottom: 16, borderWidth: 1, borderColor: C.border },
@@ -159,5 +218,7 @@ const s = StyleSheet.create({
   chipTextActive: { color: C.bg },
   btn: { backgroundColor: C.green, paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 8, flexDirection: 'row', justifyContent: 'center' },
   btnText: { color: C.bg, fontSize: 16, fontWeight: '900' },
+  viewPlanBtn: { borderWidth: 1.5, borderColor: C.green, paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 10 },
+  viewPlanBtnText: { color: C.green, fontSize: 15, fontWeight: '700' },
   note: { color: C.muted, fontSize: 12, textAlign: 'center', marginTop: 16, lineHeight: 18 },
 });
