@@ -10,11 +10,12 @@ import HomeScreen        from './screens/HomeScreen';
 import FoodScannerScreen from './screens/FoodScannerScreen';
 import AICoachScreen     from './screens/AICoachScreen';
 import MyPlanScreen      from './screens/MyPlanScreen';
+import TrackerScreen     from './screens/TrackerScreen';
 import ARScreen          from './screens/ARScreen';
 import ProfileScreen     from './screens/ProfileScreen';
 import BottomNav         from './components/BottomNav';
 
-const AUTHED = ['home', 'scanner', 'plan', 'coach', 'ar', 'profile'];
+const AUTHED = ['home', 'scanner', 'plan', 'coach', 'tracker', 'ar', 'profile'];
 
 function App() {
   const [screen, setScreen] = useState('loading');
@@ -27,10 +28,7 @@ function App() {
         if (u) { setUser(u); setScreen('home'); }
         else setScreen('auth');
       })
-      .catch(() => {
-        // Storage corrupted or unavailable - go to auth
-        setScreen('auth');
-      });
+      .catch(() => setScreen('auth'));
   }, []);
 
   const navigate     = (to) => setScreen(to);
@@ -46,45 +44,38 @@ function App() {
     }
   };
 
-  // Error boundary fallback
   if (error) {
     return (
       <View style={s.errorScreen}>
         <Text style={s.errorTitle}>Something went wrong</Text>
         <Text style={s.errorText}>{error}</Text>
-        <View style={s.errorBtn} onTouchEnd={() => { setError(null); setScreen('auth'); }}>
+        <TouchableOpacity style={s.errorBtn} onPress={() => { setError(null); setScreen('auth'); }}>
           <Text style={s.errorBtnText}>Restart App</Text>
-        </View>
+        </TouchableOpacity>
       </View>
     );
   }
 
   const renderScreen = () => {
-    try {
-      switch (screen) {
-        case 'loading':
-          return (
-            <View style={s.loading}>
-              <View style={s.splashLogo}>
-                <Text style={s.splashLogoText}>FL</Text>
-              </View>
-              <Text style={s.splashName}>FitLife</Text>
-              <Text style={s.splashTagline}>Nutrition - Training - AI Coaching</Text>
-              <ActivityIndicator color={C.green} size="large" style={{ marginTop: 40 }} />
-            </View>
-          );
-        case 'auth':    return <AuthScreen onLogin={handleLogin} />;
-        case 'home':    return <HomeScreen user={user} onNavigate={navigate} onUserUpdate={updateUser} />;
-        case 'scanner': return <FoodScannerScreen user={user} onUserUpdate={updateUser} />;
-        case 'plan':    return <MyPlanScreen user={user} onNavigate={navigate} />;
-        case 'coach':   return <AICoachScreen user={user} onUserUpdate={updateUser} onPlanSaved={() => navigate('plan')} />;
-        case 'ar':      return <ARScreen />;
-        case 'profile': return <ProfileScreen user={user} onLogout={handleLogout} />;
-        default:        return null;
-      }
-    } catch (e) {
-      setError(e.message || 'Unknown error');
-      return null;
+    switch (screen) {
+      case 'loading':
+        return (
+          <View style={s.loading}>
+            <View style={s.splashLogo}><Text style={s.splashLogoText}>FL</Text></View>
+            <Text style={s.splashName}>FitLife</Text>
+            <Text style={s.splashTagline}>Nutrition - Training - AI Coaching</Text>
+            <ActivityIndicator color={C.green} size="large" style={{ marginTop: 40 }} />
+          </View>
+        );
+      case 'auth':    return <AuthScreen onLogin={handleLogin} />;
+      case 'home':    return <HomeScreen user={user} onNavigate={navigate} onUserUpdate={updateUser} />;
+      case 'scanner': return <FoodScannerScreen user={user} onUserUpdate={updateUser} />;
+      case 'plan':    return <MyPlanScreen user={user} onNavigate={navigate} />;
+      case 'coach':   return <AICoachScreen user={user} onUserUpdate={updateUser} onPlanSaved={() => navigate('plan')} />;
+      case 'tracker': return <TrackerScreen user={user} />;
+      case 'ar':      return <ARScreen />;
+      case 'profile': return <ProfileScreen user={user} onLogout={handleLogout} onNavigate={navigate} />;
+      default:        return null;
     }
   };
 
@@ -95,6 +86,9 @@ function App() {
     </View>
   );
 }
+
+// Need TouchableOpacity in error screen
+import { TouchableOpacity } from 'react-native';
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },

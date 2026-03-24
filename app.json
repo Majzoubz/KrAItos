@@ -10,13 +10,28 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.yourname.fitlife"
+      "bundleIdentifier": "com.yourname.fitlife",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FitLife uses the camera to scan your meal and analyze its nutritional content.",
+        "NSPhotoLibraryUsageDescription": "FitLife accesses your photo library so you can pick a meal photo for analysis.",
+        "NSPhotoLibraryAddUsageDescription": "FitLife saves meal photos to your library."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0A0A0F"
       },
-      "package": "com.yourname.fitlife"
-    }
+      "package": "com.yourname.fitlife",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-image-picker",
+      "expo-media-library"
+    ]
   }
 }
