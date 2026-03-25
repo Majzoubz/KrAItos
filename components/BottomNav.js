@@ -5,7 +5,7 @@ import { C } from '../constants/theme';
 const TABS = [
   { screen: 'home',    label: 'Home'    },
   { screen: 'scanner', label: 'Scanner' },
-  { screen: 'tracker', label: 'Tracker' },
+  { screen: 'foodlog', label: 'Food Log' },
   { screen: 'plan',    label: 'My Plan' },
   { screen: 'coach',   label: 'Coach'   },
 ];
@@ -25,10 +25,10 @@ export default function BottomNav({ current, onNavigate }) {
             >
               <View style={[s.iconBox, active && s.iconBoxActive]}>
                 <Text style={[s.iconText, active && s.iconTextActive]}>
-                  {tab.screen === 'home' ? 'H' :
+                  {tab.screen === 'home'    ? 'H'   :
                    tab.screen === 'scanner' ? 'CAM' :
-                   tab.screen === 'tracker' ? 'TRK' :
-                   tab.screen === 'plan' ? 'PLAN' : 'AI'}
+                   tab.screen === 'foodlog' ? 'LOG' :
+                   tab.screen === 'plan'    ? 'PLAN': 'AI'}
                 </Text>
               </View>
               <Text style={[s.label, active && s.labelActive]}>{tab.label}</Text>

@@ -15,7 +15,7 @@ const { width } = Dimensions.get('window');
 
 const NUTRITION_SYSTEM = 'You are a professional nutritionist. Return ONLY valid JSON with no markdown and no extra text. Use this exact structure: {"meal":"name","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"sugar":number,"sodium":number,"servingSize":"description","healthScore":number,"tips":["tip1","tip2"]}. All macros in grams. healthScore is 1-10.';
 
-export default function FoodScannerScreen({ user, onUserUpdate }) {
+export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
   const [phase, setPhase]           = useState('idle');
   const [capturedImage, setCaptured] = useState(null);
   const [mimeType, setMimeType]     = useState('image/jpeg');
@@ -24,11 +24,13 @@ export default function FoodScannerScreen({ user, onUserUpdate }) {
   const [loading, setLoading]       = useState(false);
   const [history, setHistory]       = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [mealTime, setMealTime]     = useState('Lunch');
+  const [addedToLog, setAddedToLog] = useState(false);
   const spinAnim = useRef(new Animated.Value(0)).current;
   const spinLoop = useRef(null);
 
   useEffect(() => {
-    Storage.get(KEYS.MEALS(user.email)).then(h => setHistory(h || []));
+    Storage.get(KEYS.MEALS(user.uid)).then(h => setHistory(h || []));
   }, []);
 
   const requestPermission = async (type) => {
@@ -114,15 +116,15 @@ export default function FoodScannerScreen({ user, onUserUpdate }) {
         query: description.trim() || 'Photo scan',
       };
       const newHistory = [entry, ...history].slice(0, 30);
-      await Storage.set(KEYS.MEALS(user.email), newHistory);
+      await Storage.set(KEYS.MEALS(user.uid), newHistory);
       setHistory(newHistory);
       setResult(parsed);
       setPhase('result');
 
-      const updated = await Auth.updateUser(user.email, {
+      const updated = await Auth.updateUser(user.uid, {
         mealsScanned: (user.mealsScanned || 0) + 1,
       });
-      const withStreak = await Auth.logActivity(user.email);
+      const withStreak = await Auth.logActivity(user.uid);
       if (withStreak && onUserUpdate) onUserUpdate(withStreak);
       else if (updated && onUserUpdate) onUserUpdate(updated);
     } catch (e) {
@@ -272,7 +274,37 @@ export default function FoodScannerScreen({ user, onUserUpdate }) {
             </View>
           )}
 
-          <TouchableOpacity style={s.btn} onPress={reset}>
+          {!addedToLog ? (
+            <TouchableOpacity
+              style={s.addToLogBtn}
+              onPress={async () => {
+                const TODAY = new Date().toDateString();
+                const FOOD_KEY = KEYS.FOODLOG(user.uid, TODAY);
+                const existing = await Storage.get(FOOD_KEY) || [];
+                const entry = {
+                  id: Date.now(),
+                  name: result.meal || mealName,
+                  mealTime,
+                  calories: result.calories || 0,
+                  protein:  result.protein  || 0,
+                  carbs:    result.carbs    || 0,
+                  fat:      result.fat      || 0,
+                  addedAt: Date.now(),
+                  source: 'scanner',
+                };
+                await Storage.set(FOOD_KEY, [...existing, entry]);
+                setAddedToLog(true);
+                if (onAddToLog) onAddToLog();
+              }}
+            >
+              <Text style={s.addToLogBtnText}>Add to Today's Food Log</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={s.addedBadge}>
+              <Text style={s.addedBadgeText}>Added to today's log!</Text>
+            </View>
+          )}
+          <TouchableOpacity style={s.btn} onPress={() => { reset(); setAddedToLog(false); }}>
             <Text style={s.btnText}>Scan Another Meal</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -450,4 +482,8 @@ const s = StyleSheet.create({
   historyCal: { color: C.green, fontWeight: '700', fontSize: 13 },
   historyMacros: { color: C.muted, fontSize: 12, marginBottom: 3 },
   historyDate: { color: C.muted, fontSize: 11 },
+  addToLogBtn: { backgroundColor: C.green, paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginTop: 8 },
+  addToLogBtnText: { color: C.bg, fontSize: 15, fontWeight: '900' },
+  addedBadge: { backgroundColor: C.green + '22', paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginTop: 8 },
+  addedBadgeText: { color: C.green, fontWeight: '800', fontSize: 14 },
 });

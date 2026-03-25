@@ -4,7 +4,7 @@ import {
   SafeAreaView, ScrollView, Alert, Dimensions,
 } from 'react-native';
 import { C } from '../constants/theme';
-import { Storage } from '../utils/storage';
+import { Storage, KEYS } from '../utils/storage';
 
 const { width } = Dimensions.get('window');
 const TODAY = new Date().toDateString();
@@ -18,9 +18,9 @@ export default function TrackerScreen({ user }) {
   const [calInput, setCalInput]     = useState('');
   const [targetCal, setTargetCal]   = useState(2000);
 
-  const WEIGHT_KEY  = 'fitlife_weight_' + user.email;
-  const CALORIE_KEY = 'fitlife_calories_' + user.email;
-  const TARGET_KEY  = 'fitlife_caltarget_' + user.email;
+  const WEIGHT_KEY  = KEYS.WEIGHT(user.uid);
+  const CALORIE_KEY = KEYS.CALLOG(user.uid);
+  const TARGET_KEY  = KEYS.CALTARGET(user.uid);
 
   useEffect(() => {
     Storage.get(WEIGHT_KEY).then(d  => setWeightLog(d || []));

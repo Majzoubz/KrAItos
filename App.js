@@ -1,21 +1,24 @@
 import { registerRootComponent } from 'expo';
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { Auth } from './utils/auth';
 import { C } from './constants/theme';
+import { isWideWeb } from './utils/platform';
 
 import AuthScreen        from './screens/AuthScreen';
 import HomeScreen        from './screens/HomeScreen';
 import FoodScannerScreen from './screens/FoodScannerScreen';
+import FoodLogScreen     from './screens/FoodlogScreen';
 import AICoachScreen     from './screens/AICoachScreen';
 import MyPlanScreen      from './screens/MyPlanScreen';
 import TrackerScreen     from './screens/TrackerScreen';
 import ARScreen          from './screens/ARScreen';
 import ProfileScreen     from './screens/ProfileScreen';
 import BottomNav         from './components/BottomNav';
+import WebLayout         from './components/WebLayout';
 
-const AUTHED = ['home', 'scanner', 'plan', 'coach', 'tracker', 'ar', 'profile'];
+const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'coach', 'tracker', 'ar', 'profile'];
 
 function App() {
   const [screen, setScreen] = useState('loading');
@@ -37,11 +40,9 @@ function App() {
 
   const updateUser = async (u) => {
     try {
-      const fresh = await Auth.getSession();
+      const fresh = await Auth.getUserData(u?.uid);
       setUser(fresh || u);
-    } catch {
-      setUser(u);
-    }
+    } catch { setUser(u); }
   };
 
   if (error) {
@@ -69,7 +70,8 @@ function App() {
         );
       case 'auth':    return <AuthScreen onLogin={handleLogin} />;
       case 'home':    return <HomeScreen user={user} onNavigate={navigate} onUserUpdate={updateUser} />;
-      case 'scanner': return <FoodScannerScreen user={user} onUserUpdate={updateUser} />;
+      case 'scanner': return <FoodScannerScreen user={user} onUserUpdate={updateUser} onAddToLog={() => navigate('foodlog')} />;
+      case 'foodlog': return <FoodLogScreen user={user} onNavigate={navigate} />;
       case 'plan':    return <MyPlanScreen user={user} onNavigate={navigate} />;
       case 'coach':   return <AICoachScreen user={user} onUserUpdate={updateUser} onPlanSaved={() => navigate('plan')} />;
       case 'tracker': return <TrackerScreen user={user} />;
@@ -79,16 +81,23 @@ function App() {
     }
   };
 
+  const isAuthed = AUTHED.includes(screen);
+
+  if (isWideWeb && isAuthed) {
+    return (
+      <WebLayout current={screen} onNavigate={navigate} user={user}>
+        {renderScreen()}
+      </WebLayout>
+    );
+  }
+
   return (
     <View style={s.root}>
       <View style={s.content}>{renderScreen()}</View>
-      {AUTHED.includes(screen) && <BottomNav current={screen} onNavigate={navigate} />}
+      {isAuthed && <BottomNav current={screen} onNavigate={navigate} />}
     </View>
   );
 }
-
-// Need TouchableOpacity in error screen
-import { TouchableOpacity } from 'react-native';
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },

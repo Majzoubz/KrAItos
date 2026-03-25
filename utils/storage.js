@@ -1,26 +1,35 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 export const Storage = {
   async get(key) {
     try {
-      const val = await AsyncStorage.getItem(key);
-      return val ? JSON.parse(val) : null;
+      const snap = await getDoc(doc(db, 'userData', key));
+      return snap.exists() ? snap.data().value : null;
     } catch { return null; }
   },
+
   async set(key, value) {
     try {
-      await AsyncStorage.setItem(key, JSON.stringify(value));
+      await setDoc(doc(db, 'userData', key), { value, updatedAt: Date.now() });
       return true;
     } catch { return false; }
   },
+
   async remove(key) {
-    try { await AsyncStorage.removeItem(key); } catch {}
+    try { await deleteDoc(doc(db, 'userData', key)); } catch {}
   },
 };
 
+// Normalize uid - strip any encoding to get clean base
+const cleanUid = (uid) => uid ? uid.replace(/__at__/g, '@').replace(/__dot__/g, '.') : uid;
+
 export const KEYS = {
-  USERS:    'fitlife_users',
-  SESSION:  'fitlife_session',
-  PLAN:     (email) => 'fitlife_plan_' + email,
-  MEALS:    (email) => 'fitlife_meals_' + email,
+  PLAN:      (uid)        => 'plan_'    + cleanUid(uid),
+  MEALS:     (uid)        => 'meals_'   + cleanUid(uid),
+  WEIGHT:    (uid)        => 'weight_'  + cleanUid(uid),
+  CALLOG:    (uid)        => 'callog_'  + cleanUid(uid),
+  CALTARGET: (uid)        => 'caltarget_' + cleanUid(uid),
+  WATER:     (uid, date)  => 'water_'   + cleanUid(uid) + '_' + date.replace(/ /g, '_'),
+  FOODLOG:   (uid, date)  => 'foodlog_' + cleanUid(uid) + '_' + date.replace(/ /g, '_'),
 };

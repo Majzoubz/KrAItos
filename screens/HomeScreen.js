@@ -26,12 +26,12 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
 
   useEffect(() => {
     // Load water intake for today
-    Storage.get('fitlife_water_' + user.email).then(data => {
-      if (data && data.date === todayDate) setWater(data.glasses);
+    Storage.get(KEYS.WATER(user.uid, todayDate)).then(data => {
+      if (data) setWater(data);
       else setWater(0);
     });
     // Check if plan exists
-    Storage.get(KEYS.PLAN(user.email)).then(p => setHasPlan(!!p));
+    Storage.get(KEYS.PLAN(user.uid)).then(p => setHasPlan(!!p));
   }, []);
 
   const addWater = async () => {
@@ -40,10 +40,10 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
     }
     const newVal = water + 1;
     setWater(newVal);
-    await Storage.set('fitlife_water_' + user.email, { date: todayDate, glasses: newVal });
+    await Storage.set(KEYS.WATER(user.uid, todayDate), newVal);
     if (newVal === WATER_GOAL) {
       // log activity for water goal
-      const updated = await Auth.logActivity(user.email);
+      const updated = await Auth.logActivity(user.uid);
       if (updated && onUserUpdate) onUserUpdate(updated);
       Alert.alert('Water goal reached!', 'You drank ' + WATER_GOAL + ' glasses today. Excellent!');
     }
