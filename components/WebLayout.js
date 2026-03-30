@@ -1,25 +1,27 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { C } from '../constants/theme';
 
 const NAV_ITEMS = [
-  { screen: 'home',    label: 'Dashboard'   },
-  { screen: 'scanner', label: 'Food Scanner' },
-  { screen: 'foodlog', label: 'Food Log'     },
-  { screen: 'tracker', label: 'Tracker'      },
-  { screen: 'plan',    label: 'My Plan'      },
-  { screen: 'coach',   label: 'AI Coach'     },
-  { screen: 'profile', label: 'Profile'      },
+  { screen: 'home',    label: 'Dashboard',    icon: '⌂' },
+  { screen: 'scanner', label: 'Food Scanner',  icon: '◎' },
+  { screen: 'foodlog', label: 'Food Log',      icon: '☰' },
+  { screen: 'tracker', label: 'Tracker',       icon: '◈' },
+  { screen: 'plan',    label: 'My Plan',       icon: '◇' },
+  { screen: 'coach',   label: 'AI Coach',      icon: '○' },
+  { screen: 'profile', label: 'Profile',       icon: '●' },
 ];
 
 export default function WebLayout({ current, onNavigate, user, children }) {
   return (
     <View style={s.root}>
-      {/* Sidebar */}
       <View style={s.sidebar}>
         <View style={s.logo}>
           <View style={s.logoCircle}><Text style={s.logoText}>FL</Text></View>
-          <Text style={s.logoName}>FitLife</Text>
+          <View>
+            <Text style={s.logoName}>FitLife</Text>
+            <Text style={s.logoSub}>AI FITNESS</Text>
+          </View>
         </View>
 
         <View style={s.nav}>
@@ -29,6 +31,7 @@ export default function WebLayout({ current, onNavigate, user, children }) {
               style={[s.navItem, current === item.screen && s.navItemActive]}
               onPress={() => onNavigate(item.screen)}
             >
+              <Text style={[s.navIcon, current === item.screen && s.navIconActive]}>{item.icon}</Text>
               <Text style={[s.navLabel, current === item.screen && s.navLabelActive]}>
                 {item.label}
               </Text>
@@ -49,7 +52,6 @@ export default function WebLayout({ current, onNavigate, user, children }) {
         )}
       </View>
 
-      {/* Main content */}
       <View style={s.main}>
         {children}
       </View>
@@ -61,12 +63,15 @@ const s = StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: C.bg },
   sidebar: { width: 240, backgroundColor: C.surface, borderRightWidth: 1, borderRightColor: C.border, paddingTop: 32, paddingHorizontal: 16, justifyContent: 'space-between' },
   logo: { flexDirection: 'row', alignItems: 'center', marginBottom: 40, paddingHorizontal: 8 },
-  logoCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: C.green, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  logoCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: C.green, alignItems: 'center', justifyContent: 'center', marginRight: 10, backgroundColor: C.bg },
   logoText: { color: C.green, fontSize: 13, fontWeight: '900' },
-  logoName: { color: C.white, fontSize: 20, fontWeight: '900' },
+  logoName: { color: C.white, fontSize: 20, fontWeight: '900', letterSpacing: 1 },
+  logoSub: { color: C.green, fontSize: 8, fontWeight: '700', letterSpacing: 3 },
   nav: { flex: 1 },
-  navItem: { paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, marginBottom: 4 },
-  navItemActive: { backgroundColor: C.green + '22' },
+  navItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 12, marginBottom: 4 },
+  navItemActive: { backgroundColor: C.greenGlow },
+  navIcon: { color: C.muted, fontSize: 16, width: 28 },
+  navIconActive: { color: C.green },
   navLabel: { color: C.muted, fontSize: 14, fontWeight: '600' },
   navLabelActive: { color: C.green, fontWeight: '800' },
   userBox: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderTopColor: C.border },

@@ -59,7 +59,7 @@ export default function AuthScreen({ onLogin }) {
           <View style={s.logoWrap}>
             <View style={s.logoRing}><Text style={s.logoText}>FL</Text></View>
             <Text style={s.appName}>FitLife</Text>
-            <Text style={s.tagline}>Nutrition - Training - AI Coaching</Text>
+            <Text style={s.tagline}>AI-POWERED FITNESS</Text>
           </View>
 
           <View style={s.tabs}>
@@ -133,24 +133,24 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: 40 },
   logoWrap: { alignItems: 'center', marginBottom: 36 },
-  logoRing: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, borderColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  logoText: { color: C.green, fontSize: 24, fontWeight: '900' },
-  appName: { fontSize: 36, fontWeight: '900', color: C.green },
-  tagline: { fontSize: 12, color: C.muted, marginTop: 4 },
-  tabs: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 12, padding: 4, marginBottom: 24 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+  logoRing: { width: 80, height: 80, borderRadius: 40, borderWidth: 2.5, borderColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14, backgroundColor: C.bg },
+  logoText: { color: C.green, fontSize: 24, fontWeight: '900', letterSpacing: 2 },
+  appName: { fontSize: 36, fontWeight: '900', color: C.white, letterSpacing: 2 },
+  tagline: { fontSize: 11, color: C.green, marginTop: 6, fontWeight: '700', letterSpacing: 3 },
+  tabs: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, padding: 4, marginBottom: 28, borderWidth: 1, borderColor: C.border },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
   tabActive: { backgroundColor: C.green },
-  tabText: { color: C.muted, fontWeight: '700' },
+  tabText: { color: C.muted, fontWeight: '700', fontSize: 15 },
   tabTextActive: { color: C.bg },
-  label: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 6 },
-  input: { backgroundColor: C.surface, color: C.white, padding: 14, borderRadius: 12, fontSize: 15, marginBottom: 16, borderWidth: 1, borderColor: C.border },
-  passWrap: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.border, marginBottom: 16, alignItems: 'center' },
-  passInput: { flex: 1, color: C.white, padding: 14, fontSize: 15 },
-  eyeBtn: { paddingHorizontal: 14 },
+  label: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 },
+  input: { backgroundColor: C.surface, color: C.white, padding: 16, borderRadius: 14, fontSize: 15, marginBottom: 18, borderWidth: 1.5, borderColor: C.border },
+  passWrap: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, borderWidth: 1.5, borderColor: C.border, marginBottom: 18, alignItems: 'center' },
+  passInput: { flex: 1, color: C.white, padding: 16, fontSize: 15 },
+  eyeBtn: { paddingHorizontal: 16 },
   eyeText: { color: C.green, fontSize: 13, fontWeight: '700' },
-  btn: { backgroundColor: C.green, paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 4 },
-  btnText: { color: C.bg, fontSize: 16, fontWeight: '900' },
-  switchRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
+  btn: { backgroundColor: C.green, paddingVertical: 18, borderRadius: 16, alignItems: 'center', marginTop: 8, shadowColor: C.green, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
+  btnText: { color: C.bg, fontSize: 17, fontWeight: '900', letterSpacing: 0.5 },
+  switchRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
   switchText: { color: C.muted, fontSize: 14 },
   link: { color: C.green, fontSize: 14, fontWeight: '700' },
 });

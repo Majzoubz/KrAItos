@@ -19,10 +19,10 @@ export function ScreenHeader({ title, icon, onBack }) {
   return (
     <View style={s.screenHeader}>
       <TouchableOpacity style={s.backBtn} onPress={onBack}>
-        <Text style={s.backText}></Text>
+        <Text style={s.backText}>←</Text>
       </TouchableOpacity>
       <Text style={s.screenTitle}>{icon} {title}</Text>
-      <View style={{ width: 36 }} />
+      <View style={{ width: 44 }} />
     </View>
   );
 }
@@ -37,6 +37,7 @@ export function PrimaryButton({ label, onPress, disabled, children, style }) {
       style={[s.primaryBtn, disabled && { opacity: 0.5 }, style]}
       onPress={onPress}
       disabled={disabled}
+      activeOpacity={0.85}
     >
       {children ?? <Text style={s.primaryBtnText}>{label}</Text>}
     </TouchableOpacity>
@@ -45,7 +46,7 @@ export function PrimaryButton({ label, onPress, disabled, children, style }) {
 
 export function SecondaryButton({ label, onPress }) {
   return (
-    <TouchableOpacity style={s.secondaryBtn} onPress={onPress}>
+    <TouchableOpacity style={s.secondaryBtn} onPress={onPress} activeOpacity={0.85}>
       <Text style={s.secondaryBtnText}>{label}</Text>
     </TouchableOpacity>
   );
@@ -106,47 +107,50 @@ export function ChipSelector({ label, options, selected, onSelect }) {
 }
 
 const s = StyleSheet.create({
-  fieldLabel: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 6, marginTop: 4 },
+  fieldLabel: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 8, marginTop: 4, letterSpacing: 0.5 },
   input: {
-    backgroundColor: C.surface, color: C.white, padding: 14,
-    borderRadius: 12, fontSize: 15, marginBottom: 16,
-    borderWidth: 1, borderColor: C.border,
+    backgroundColor: C.surface, color: C.white, padding: 16,
+    borderRadius: 14, fontSize: 15, marginBottom: 18,
+    borderWidth: 1.5, borderColor: C.border,
   },
   screenHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     padding: 16, borderBottomWidth: 1, borderBottomColor: C.border,
   },
   backBtn: {
-    width: 36, height: 36, backgroundColor: C.surface,
-    borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+    width: 44, height: 44, backgroundColor: C.surface,
+    borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: C.border,
   },
-  backText: { color: C.white, fontSize: 18, fontWeight: 'bold' },
-  screenTitle: { color: C.white, fontSize: 17, fontWeight: '800' },
+  backText: { color: C.white, fontSize: 20, fontWeight: '600' },
+  screenTitle: { color: C.white, fontSize: 17, fontWeight: '800', letterSpacing: 0.5 },
   sectionTitle: { color: C.white, fontSize: 16, fontWeight: '800', marginTop: 24, marginBottom: 12 },
   primaryBtn: {
-    backgroundColor: C.green, paddingVertical: 16, borderRadius: 14,
+    backgroundColor: C.green, paddingVertical: 18, borderRadius: 16,
     alignItems: 'center', marginTop: 8, flexDirection: 'row', justifyContent: 'center',
+    shadowColor: C.green, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 12,
   },
-  primaryBtnText: { color: C.bg, fontSize: 16, fontWeight: '900' },
-  secondaryBtn: { borderWidth: 1.5, borderColor: C.green, paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 16 },
+  primaryBtnText: { color: C.bg, fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
+  secondaryBtn: { borderWidth: 1.5, borderColor: C.green, paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginTop: 16 },
   secondaryBtnText: { color: C.green, fontSize: 15, fontWeight: '700' },
   macroGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
-  macroItem: { width: '30%', backgroundColor: C.card, borderRadius: 12, padding: 12, alignItems: 'center', marginRight: 6, marginBottom: 6 },
+  macroItem: { width: '30%', backgroundColor: C.card, borderRadius: 14, padding: 14, alignItems: 'center', marginRight: 6, marginBottom: 6, borderWidth: 1, borderColor: C.border },
   macroVal: { fontSize: 22, fontWeight: '800' },
   macroUnit: { fontSize: 13, fontWeight: '400' },
   macroLabel: { color: C.muted, fontSize: 12, marginTop: 2 },
-  calorieHero: { backgroundColor: C.surface, borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 16 },
+  calorieHero: { backgroundColor: C.surface, borderRadius: 18, padding: 24, alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: C.border },
   calorieNum: { color: C.green, fontSize: 56, fontWeight: '900' },
   calorieLabel: { color: C.muted, fontSize: 13, letterSpacing: 2, marginTop: -4 },
-  tipsBox: { backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 16 },
+  tipsBox: { backgroundColor: C.card, borderRadius: 18, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: C.border },
   tipsTitle: { color: C.white, fontWeight: '800', marginBottom: 10 },
   tipItem: { color: C.muted, fontSize: 13, lineHeight: 22 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
   chip: {
-    paddingHorizontal: 14, paddingVertical: 8, marginRight: 8, marginBottom: 8,
-    backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.border,
+    paddingHorizontal: 16, paddingVertical: 10, marginRight: 8, marginBottom: 8,
+    backgroundColor: C.surface, borderRadius: 22, borderWidth: 1.5, borderColor: C.border,
   },
-  chipActive: { backgroundColor: C.green, borderColor: C.green },
+  chipActive: { backgroundColor: C.greenGlow, borderColor: C.green },
   chipText: { color: C.muted, fontSize: 13, fontWeight: '600' },
-  chipTextActive: { color: C.bg },
+  chipTextActive: { color: C.green, fontWeight: '700' },
 });

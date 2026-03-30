@@ -15,6 +15,8 @@ FitLife is a React Native / Expo fitness application that runs on web via `react
 ```
 App.js              # Root entry, manual navigation (no expo-router)
 screens/            # All screen components
+  WelcomeScreen.js  # Motivational landing page with "Get Started"
+  OnboardingScreen.js # 18-step questionnaire (Basic Info, Goal, Program Design)
   AuthScreen.js     # Login / Sign Up
   HomeScreen.js     # Dashboard
   FoodScannerScreen.js  # Camera food analysis
@@ -55,8 +57,22 @@ npx expo start --web --port 5000 --host lan
 ```
 This serves the web version at port 5000 via Metro bundler.
 
-## Navigation
-The app uses manual state-based navigation (not expo-router). Screen changes are handled via `navigate()` function in `App.js`.
+## Navigation Flow
+1. **Welcome Screen** - Motivational landing with "Get Started" button (shown once per device)
+2. **Onboarding** - 18-step questionnaire divided into:
+   - **Basic Info**: Birthday, height, weight, max weight, weight trend, body fat, exercise frequency, activity level, training experience, cardio experience
+   - **Goal**: Primary goal, target weight, weekly loss rate
+   - **Program Design**: Diet preference, exercise inclusion/type, calorie distribution, protein intake
+3. **Auth Screen** - Login / Sign Up
+4. **Main App** - Dashboard with bottom nav (mobile) or sidebar (desktop)
+
+Onboarding data is saved to AsyncStorage and can be used by AI coach for personalized plans.
+
+## Design System
+- **Color palette**: Neon green (#00FF6A) + pure black (#000000) + white (#FFFFFF)
+- **Theme file**: `constants/theme.js`
+- **Cards**: Dark surface with subtle borders, rounded corners (16-18px)
+- **Buttons**: Neon green with shadow glow effect
 
 ## Layout
 - **Mobile / Narrow web**: Bottom navigation bar (`BottomNav`)
