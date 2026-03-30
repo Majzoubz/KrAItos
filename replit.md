@@ -1,7 +1,7 @@
 # FitLife - AI-Powered Fitness & Nutrition App
 
 ## Overview
-FitLife is a React Native / Expo fitness application that runs on web via `react-native-web`. It provides AI-powered nutrition coaching, food scanning, workout planning, and progress tracking.
+FitLife is a React Native / Expo fitness application that runs on web via `react-native-web`. It provides AI-powered nutrition coaching, food scanning, workout planning, and progress tracking. Inspired by MacroFactor and Cal AI.
 
 ## Tech Stack
 - **Framework**: React Native with Expo SDK 54
@@ -14,10 +14,10 @@ FitLife is a React Native / Expo fitness application that runs on web via `react
 ## Project Structure
 ```
 App.js              # Root entry, manual navigation (no expo-router)
-screens/            # All screen components
-  WelcomeScreen.js  # Motivational landing page with "Get Started"
-  OnboardingScreen.js # 18-step questionnaire (Basic Info, Goal, Program Design)
-  AuthScreen.js     # Login / Sign Up
+screens/
+  WelcomeScreen.js  # Animated landing page with glow effects
+  AuthScreen.js     # Login / Sign Up (defaults to signup first)
+  OnboardingScreen.js # 19-step questionnaire with section transitions & building screen
   HomeScreen.js     # Dashboard
   FoodScannerScreen.js  # Camera food analysis
   FoodlogScreen.js  # Food log history
@@ -32,7 +32,7 @@ components/
   UI.js             # Shared UI primitives
 utils/
   firebase.js       # Firebase init & Firestore
-  auth.js           # Auth logic
+  auth.js           # Auth logic (custom hash + Firestore, not Firebase Auth SDK)
   api.js            # Groq AI integration
   storage.js        # AsyncStorage wrapper
   platform.js       # Platform detection helpers
@@ -53,27 +53,33 @@ The app needs the following environment variables (set as Replit Secrets):
 ## Running the App
 The workflow "Start application" runs:
 ```
-npx expo start --web --port 5000 --host lan
+EXPO_NO_DOTENV=1 npx expo start --web --port 5000 --tunnel
 ```
 This serves the web version at port 5000 via Metro bundler.
 
 ## Navigation Flow
-1. **Welcome Screen** - Motivational landing with "Get Started" button (shown once per device)
-2. **Onboarding** - 18-step questionnaire divided into:
-   - **Basic Info**: Birthday, height, weight, max weight, weight trend, body fat, exercise frequency, activity level, training experience, cardio experience
-   - **Goal**: Primary goal, target weight, weekly loss rate
-   - **Program Design**: Diet preference, exercise inclusion/type, calorie distribution, protein intake
-3. **Auth Screen** - Login / Sign Up
-4. **Main App** - Dashboard with bottom nav (mobile) or sidebar (desktop)
+1. **Welcome Screen** — Animated landing with FitLife branding and "Get Started"
+2. **Auth Screen** — Sign Up (default) / Log In
+3. **Onboarding** — 19-step questionnaire divided into sections:
+   - **About You** (12 steps): Gender, birthday, units, height, weight, max weight, weight trend, body fat, activity level, training experience, cardio experience, exercise frequency
+   - **Your Goal** (3 steps): Primary goal, target weight, weekly rate of change
+   - **Program** (4 steps): Nutrition approach, training preference, calorie strategy, protein target
+   - Animated section transitions between each section
+   - "Building Your Program" screen with phase checklist at the end
+4. **Main App** — Dashboard with bottom nav (mobile) or sidebar (desktop)
 
-Onboarding data is saved to AsyncStorage and can be used by AI coach for personalized plans.
+Returning users who already completed onboarding skip directly to Home after login.
 
 ## Design System
 - **Color palette**: Neon green (#00FF6A) + pure black (#000000) + white (#FFFFFF)
 - **Theme file**: `constants/theme.js`
-- **Cards**: Dark surface with subtle borders, rounded corners (16-18px)
-- **Buttons**: Neon green with shadow glow effect
+- **Surface colors**: `#0D0D0D` (surface), `#141414` (card), `#1F1F1F` (border)
+- **Green glows**: `rgba(0,255,106,0.15)` and `rgba(0,255,106,0.08)`
+- **Cards**: Dark surface with subtle borders, rounded corners (16px)
+- **Buttons**: Neon green, bold text, rounded 16px
+- **Onboarding inputs**: Visual cards for selection, icons, grid layouts for frequency
 
 ## Layout
 - **Mobile / Narrow web**: Bottom navigation bar (`BottomNav`)
 - **Wide web (>768px)**: Sidebar layout (`WebLayout`)
+- **Units**: Supports Metric (kg/cm) and Imperial (lbs/ft-in) throughout onboarding

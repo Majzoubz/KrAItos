@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  SafeAreaView, KeyboardAvoidingView, Platform, ScrollView,
-  Alert, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ScrollView,
+  Alert, ActivityIndicator, Animated,
 } from 'react-native';
 import { C } from '../constants/theme';
 import { Auth } from '../utils/auth';
 
-export default function AuthScreen({ onLogin }) {
-  const [mode, setMode]             = useState('login');
+export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
+  const [mode, setMode]             = useState(initialMode);
   const [fullName, setFullName]     = useState('');
   const [email, setEmail]           = useState('');
   const [password, setPassword]     = useState('');
@@ -16,6 +16,11 @@ export default function AuthScreen({ onLogin }) {
   const [showPass, setShowPass]     = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading]       = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+  }, []);
 
   const handle = async () => {
     const trimEmail = email.trim().toLowerCase();
@@ -52,104 +57,101 @@ export default function AuthScreen({ onLogin }) {
   };
 
   return (
-    <SafeAreaView style={s.safe}>
+    <View style={s.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+          <Animated.View style={{ opacity: fadeAnim }}>
 
-          <View style={s.logoWrap}>
-            <View style={s.logoRing}><Text style={s.logoText}>FL</Text></View>
-            <Text style={s.appName}>FitLife</Text>
-            <Text style={s.tagline}>AI-POWERED FITNESS</Text>
-          </View>
+            <View style={s.topSection}>
+              <View style={s.logoRing}><Text style={s.logoText}>FL</Text></View>
+              <Text style={s.heading}>
+                {mode === 'signup' ? 'Create your account' : 'Welcome back'}
+              </Text>
+              <Text style={s.subheading}>
+                {mode === 'signup' ? 'Sign up to start your transformation' : 'Log in to continue your journey'}
+              </Text>
+            </View>
 
-          <View style={s.tabs}>
-            {['login', 'signup'].map(m => (
-              <TouchableOpacity key={m} style={[s.tab, mode === m && s.tabActive]}
-                onPress={() => { setMode(m); setPassword(''); setConfirm(''); }}>
-                <Text style={[s.tabText, mode === m && s.tabTextActive]}>
-                  {m === 'login' ? 'Log In' : 'Sign Up'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+            {mode === 'signup' && (
+              <View style={s.fieldGroup}>
+                <Text style={s.label}>FULL NAME</Text>
+                <TextInput style={s.input} placeholder="Your name" placeholderTextColor={C.muted}
+                  value={fullName} onChangeText={setFullName} autoCapitalize="words" />
+              </View>
+            )}
 
-          {mode === 'signup' && (
-            <>
-              <Text style={s.label}>Full Name</Text>
-              <TextInput style={s.input} placeholder="Alex Johnson" placeholderTextColor={C.muted}
-                value={fullName} onChangeText={setFullName} autoCapitalize="words" />
-            </>
-          )}
+            <View style={s.fieldGroup}>
+              <Text style={s.label}>EMAIL</Text>
+              <TextInput style={s.input} placeholder="you@example.com" placeholderTextColor={C.muted}
+                value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+            </View>
 
-          <Text style={s.label}>Email</Text>
-          <TextInput style={s.input} placeholder="alex@example.com" placeholderTextColor={C.muted}
-            value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-
-          <Text style={s.label}>Password</Text>
-          <View style={s.passWrap}>
-            <TextInput style={s.passInput} placeholder="Min. 6 characters" placeholderTextColor={C.muted}
-              value={password} onChangeText={setPassword} secureTextEntry={!showPass} />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)} style={s.eyeBtn}>
-              <Text style={s.eyeText}>{showPass ? 'Hide' : 'Show'}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {mode === 'signup' && (
-            <>
-              <Text style={s.label}>Confirm Password</Text>
+            <View style={s.fieldGroup}>
+              <Text style={s.label}>PASSWORD</Text>
               <View style={s.passWrap}>
-                <TextInput style={s.passInput} placeholder="Repeat password" placeholderTextColor={C.muted}
-                  value={confirm} onChangeText={setConfirm} secureTextEntry={!showConfirm} />
-                <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} style={s.eyeBtn}>
-                  <Text style={s.eyeText}>{showConfirm ? 'Hide' : 'Show'}</Text>
+                <TextInput style={s.passInput} placeholder="Min. 6 characters" placeholderTextColor={C.muted}
+                  value={password} onChangeText={setPassword} secureTextEntry={!showPass} />
+                <TouchableOpacity onPress={() => setShowPass(!showPass)} style={s.eyeBtn}>
+                  <Text style={s.eyeText}>{showPass ? 'HIDE' : 'SHOW'}</Text>
                 </TouchableOpacity>
               </View>
-            </>
-          )}
+            </View>
 
-          <TouchableOpacity style={[s.btn, loading && { opacity: 0.6 }]} onPress={handle} disabled={loading}>
-            {loading
-              ? <ActivityIndicator color={C.bg} />
-              : <Text style={s.btnText}>{mode === 'login' ? 'Log In' : 'Create Account'}</Text>
-            }
-          </TouchableOpacity>
+            {mode === 'signup' && (
+              <View style={s.fieldGroup}>
+                <Text style={s.label}>CONFIRM PASSWORD</Text>
+                <View style={s.passWrap}>
+                  <TextInput style={s.passInput} placeholder="Repeat password" placeholderTextColor={C.muted}
+                    value={confirm} onChangeText={setConfirm} secureTextEntry={!showConfirm} />
+                  <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} style={s.eyeBtn}>
+                    <Text style={s.eyeText}>{showConfirm ? 'HIDE' : 'SHOW'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
-          <View style={s.switchRow}>
-            <Text style={s.switchText}>
-              {mode === 'login' ? "Don't have an account?  " : 'Already have an account?  '}
-            </Text>
-            <TouchableOpacity onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
-              <Text style={s.link}>{mode === 'login' ? 'Sign Up' : 'Log In'}</Text>
+            <TouchableOpacity style={[s.btn, loading && { opacity: 0.6 }]} onPress={handle} disabled={loading} activeOpacity={0.85}>
+              {loading
+                ? <ActivityIndicator color={C.bg} />
+                : <Text style={s.btnText}>{mode === 'login' ? 'LOG IN' : 'CREATE ACCOUNT'}</Text>
+              }
             </TouchableOpacity>
-          </View>
 
+            <View style={s.switchRow}>
+              <Text style={s.switchText}>
+                {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+              </Text>
+              <TouchableOpacity onPress={() => { setMode(mode === 'login' ? 'signup' : 'login'); setPassword(''); setConfirm(''); }}>
+                <Text style={s.link}>{mode === 'login' ? ' Sign Up' : ' Log In'}</Text>
+              </TouchableOpacity>
+            </View>
+
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: 40 },
-  logoWrap: { alignItems: 'center', marginBottom: 36 },
-  logoRing: { width: 80, height: 80, borderRadius: 40, borderWidth: 2.5, borderColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 14, backgroundColor: C.bg },
-  logoText: { color: C.green, fontSize: 24, fontWeight: '900', letterSpacing: 2 },
-  appName: { fontSize: 36, fontWeight: '900', color: C.white, letterSpacing: 2 },
-  tagline: { fontSize: 11, color: C.green, marginTop: 6, fontWeight: '700', letterSpacing: 3 },
-  tabs: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, padding: 4, marginBottom: 28, borderWidth: 1, borderColor: C.border },
-  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
-  tabActive: { backgroundColor: C.green },
-  tabText: { color: C.muted, fontWeight: '700', fontSize: 15 },
-  tabTextActive: { color: C.bg },
-  label: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 },
-  input: { backgroundColor: C.surface, color: C.white, padding: 16, borderRadius: 14, fontSize: 15, marginBottom: 18, borderWidth: 1.5, borderColor: C.border },
-  passWrap: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, borderWidth: 1.5, borderColor: C.border, marginBottom: 18, alignItems: 'center' },
-  passInput: { flex: 1, color: C.white, padding: 16, fontSize: 15 },
+  topSection: { alignItems: 'center', marginBottom: 32 },
+  logoRing: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 20, backgroundColor: C.bg },
+  logoText: { color: C.green, fontSize: 20, fontWeight: '900', letterSpacing: 2 },
+  heading: { fontSize: 28, fontWeight: '800', color: C.white, marginBottom: 8 },
+  subheading: { fontSize: 15, color: C.muted },
+  fieldGroup: { marginBottom: 18 },
+  label: { color: C.muted, fontSize: 11, fontWeight: '700', marginBottom: 8, letterSpacing: 1.5 },
+  input: { backgroundColor: C.surface, color: C.white, padding: 16, borderRadius: 14, fontSize: 16, borderWidth: 1.5, borderColor: C.border },
+  passWrap: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, borderWidth: 1.5, borderColor: C.border, alignItems: 'center' },
+  passInput: { flex: 1, color: C.white, padding: 16, fontSize: 16 },
   eyeBtn: { paddingHorizontal: 16 },
-  eyeText: { color: C.green, fontSize: 13, fontWeight: '700' },
-  btn: { backgroundColor: C.green, paddingVertical: 18, borderRadius: 16, alignItems: 'center', marginTop: 8, shadowColor: C.green, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
-  btnText: { color: C.bg, fontSize: 17, fontWeight: '900', letterSpacing: 0.5 },
+  eyeText: { color: C.green, fontSize: 11, fontWeight: '800', letterSpacing: 1 },
+  btn: {
+    backgroundColor: C.green, paddingVertical: 18, borderRadius: 16, alignItems: 'center', marginTop: 8,
+  },
+  btnText: { color: C.bg, fontSize: 15, fontWeight: '900', letterSpacing: 1.5 },
   switchRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
   switchText: { color: C.muted, fontSize: 14 },
   link: { color: C.green, fontSize: 14, fontWeight: '700' },
