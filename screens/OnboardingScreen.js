@@ -423,40 +423,8 @@ export default function OnboardingScreen({ onComplete, user }) {
           { val: 'Performance', icon: '⚡', desc: 'Optimize for athletics' },
         ], 'goal');
 
-      case 'weeklyRate': {
-        const isMetric = data.units === 'Metric';
-        const rateOptions = isMetric ? [
-          { val: '0.25', label: '0.25 kg/week', desc: 'Slow & steady — easiest to maintain', tag: 'SUSTAINABLE' },
-          { val: '0.5', label: '0.5 kg/week', desc: 'Best balance of speed and sustainability', tag: 'RECOMMENDED' },
-          { val: '0.75', label: '0.75 kg/week', desc: 'Moderate — requires discipline', tag: '' },
-          { val: '1.0', label: '1.0 kg/week', desc: 'Aggressive — significant calorie deficit', tag: 'AGGRESSIVE' },
-        ] : [
-          { val: '0.5', label: '0.5 lb/week', desc: 'Slow & steady — easiest to maintain', tag: 'SUSTAINABLE' },
-          { val: '1.0', label: '1.0 lb/week', desc: 'Best balance of speed and sustainability', tag: 'RECOMMENDED' },
-          { val: '1.5', label: '1.5 lb/week', desc: 'Moderate — requires discipline', tag: '' },
-          { val: '2.0', label: '2.0 lb/week', desc: 'Aggressive — significant calorie deficit', tag: 'AGGRESSIVE' },
-        ];
-        return (
-          <View>
-            {rateOptions.map(r => (
-              <TouchableOpacity
-                key={r.val}
-                style={[s.optionCard, data.weeklyRate === r.val && s.optionCardActive]}
-                onPress={() => updateField('weeklyRate', r.val)}
-              >
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[s.optionText, data.weeklyRate === r.val && s.optionTextActive]}>{r.label}</Text>
-                    {r.tag ? <View style={[s.tag, r.tag === 'RECOMMENDED' && s.tagGreen]}><Text style={[s.tagText, r.tag === 'RECOMMENDED' && { color: C.green }]}>{r.tag}</Text></View> : null}
-                  </View>
-                  <Text style={s.optionDesc}>{r.desc}</Text>
-                </View>
-                {data.weeklyRate === r.val && <View style={s.checkMark}><Text style={s.checkText}>✓</Text></View>}
-              </TouchableOpacity>
-            ))}
-          </View>
-        );
-      }
+      case 'weeklyRate':
+        return renderWeeklyRate();
 
       case 'diet':
         return renderIconOptions([
@@ -531,6 +499,41 @@ export default function OnboardingScreen({ onComplete, user }) {
       default:
         return null;
     }
+  };
+
+  const renderWeeklyRate = () => {
+    const isMetric = data.units === 'Metric';
+    const rateOptions = isMetric ? [
+      { val: '0.25', label: '0.25 kg/week', desc: 'Slow & steady — easiest to maintain', tag: 'SUSTAINABLE' },
+      { val: '0.5', label: '0.5 kg/week', desc: 'Best balance of speed and sustainability', tag: 'RECOMMENDED' },
+      { val: '0.75', label: '0.75 kg/week', desc: 'Moderate — requires discipline', tag: '' },
+      { val: '1.0', label: '1.0 kg/week', desc: 'Aggressive — significant calorie deficit', tag: 'AGGRESSIVE' },
+    ] : [
+      { val: '0.5', label: '0.5 lb/week', desc: 'Slow & steady — easiest to maintain', tag: 'SUSTAINABLE' },
+      { val: '1.0', label: '1.0 lb/week', desc: 'Best balance of speed and sustainability', tag: 'RECOMMENDED' },
+      { val: '1.5', label: '1.5 lb/week', desc: 'Moderate — requires discipline', tag: '' },
+      { val: '2.0', label: '2.0 lb/week', desc: 'Aggressive — significant calorie deficit', tag: 'AGGRESSIVE' },
+    ];
+    return (
+      <View>
+        {rateOptions.map(r => (
+          <TouchableOpacity
+            key={r.val}
+            style={[s.optionCard, data.weeklyRate === r.val && s.optionCardActive]}
+            onPress={() => updateField('weeklyRate', r.val)}
+          >
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[s.optionText, data.weeklyRate === r.val && s.optionTextActive]}>{r.label}</Text>
+                {r.tag ? <View style={[s.tag, r.tag === 'RECOMMENDED' && s.tagGreen]}><Text style={[s.tagText, r.tag === 'RECOMMENDED' && { color: C.green }]}>{r.tag}</Text></View> : null}
+              </View>
+              <Text style={s.optionDesc}>{r.desc}</Text>
+            </View>
+            {data.weeklyRate === r.val && <View style={s.checkMark}><Text style={s.checkText}>✓</Text></View>}
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
   };
 
   const renderIconOptions = (options, field) => (
