@@ -5,7 +5,7 @@ import {
   Animated, Image, Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { C } from '../constants/theme';
 import { callAI, callAIWithImage, parseJSON } from '../utils/api';
 import { Auth } from '../utils/auth';
@@ -54,7 +54,7 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
     const ok = await requestPermission('camera');
     if (!ok) return;
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.7,
       base64: false,
       allowsEditing: true,
@@ -71,7 +71,7 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
     const ok = await requestPermission('library');
     if (!ok) return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.7,
       base64: false,
       allowsEditing: true,
@@ -92,7 +92,7 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
       if (capturedImage) {
         // Convert image to base64
         const base64 = await FileSystem.readAsStringAsync(capturedImage, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: 'base64',
         });
         raw = await callAIWithImage(base64, mimeType, description.trim() || null);
       } else {
