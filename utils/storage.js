@@ -1,27 +1,27 @@
-import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PREFIX = 'fitlife_data_';
 
 export const Storage = {
   async get(key) {
     try {
-      const snap = await getDoc(doc(db, 'userData', key));
-      return snap.exists() ? snap.data().value : null;
+      const raw = await AsyncStorage.getItem(PREFIX + key);
+      return raw ? JSON.parse(raw) : null;
     } catch { return null; }
   },
 
   async set(key, value) {
     try {
-      await setDoc(doc(db, 'userData', key), { value, updatedAt: Date.now() });
+      await AsyncStorage.setItem(PREFIX + key, JSON.stringify(value));
       return true;
     } catch { return false; }
   },
 
   async remove(key) {
-    try { await deleteDoc(doc(db, 'userData', key)); } catch {}
+    try { await AsyncStorage.removeItem(PREFIX + key); } catch {}
   },
 };
 
-// Normalize uid - strip any encoding to get clean base
 const cleanUid = (uid) => uid ? uid.replace(/__at__/g, '@').replace(/__dot__/g, '.') : uid;
 
 export const KEYS = {

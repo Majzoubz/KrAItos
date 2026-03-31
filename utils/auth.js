@@ -1,24 +1,32 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from './firebase';
 
 const SESSION_KEY = 'fitlife_session_v2';
+const USERS_KEY = 'fitlife_users';
 
-// Simple but consistent hash - same input always gives same output
 const hashPassword = (password) => {
   let hash = 5381;
   for (let i = 0; i < password.length; i++) {
     hash = ((hash << 5) + hash) + password.charCodeAt(i);
-    hash = hash & hash; // Convert to 32bit integer
+    hash = hash & hash;
   }
   return 'fl_' + Math.abs(hash).toString(16) + '_' + password.length;
 };
 
-// Use email as document ID - sanitize it safely
 const emailToId = (email) => {
   return email.toLowerCase().trim()
     .replace(/@/g, '__at__')
     .replace(/\./g, '__dot__');
+};
+
+const getAllUsers = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(USERS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+};
+
+const saveAllUsers = async (users) => {
+  await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
 };
 
 export const Auth = {
@@ -29,11 +37,10 @@ export const Auth = {
 
   async signup(fullName, email, password) {
     try {
-      const uid     = emailToId(email);
-      const userRef = doc(db, 'users', uid);
-      const existing = await getDoc(userRef);
+      const uid = emailToId(email);
+      const users = await getAllUsers();
 
-      if (existing.exists()) {
+      if (users[uid]) {
         return { error: 'An account with this email already exists.' };
       }
 
@@ -49,26 +56,26 @@ export const Auth = {
         lastActive: null,
       };
 
-      await setDoc(userRef, userData);
+      users[uid] = userData;
+      await saveAllUsers(users);
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ uid }));
       return { user: userData };
     } catch (e) {
       console.error('Signup error:', e);
-      return { error: 'Signup failed. Check your internet connection.' };
+      return { error: 'Signup failed. Please try again.' };
     }
   },
 
   async login(email, password) {
     try {
-      const uid     = emailToId(email);
-      const userRef = doc(db, 'users', uid);
-      const snap    = await getDoc(userRef);
+      const uid = emailToId(email);
+      const users = await getAllUsers();
+      const userData = users[uid];
 
-      if (!snap.exists()) {
+      if (!userData) {
         return { error: 'No account found with this email.' };
       }
 
-      const userData = snap.data();
       if (userData.passwordHash !== hashPassword(password)) {
         return { error: 'Incorrect password.' };
       }
@@ -77,7 +84,7 @@ export const Auth = {
       return { user: { ...userData, uid } };
     } catch (e) {
       console.error('Login error:', e);
-      return { error: 'Login failed. Check your internet connection.' };
+      return { error: 'Login failed. Please try again.' };
     }
   },
 
@@ -97,34 +104,38 @@ export const Auth = {
 
   async getUserData(uid) {
     try {
-      const snap = await getDoc(doc(db, 'users', uid));
-      return snap.exists() ? { ...snap.data(), uid } : null;
+      const users = await getAllUsers();
+      return users[uid] ? { ...users[uid], uid } : null;
     } catch { return null; }
   },
 
   async updateUser(uid, updates) {
     try {
-      await updateDoc(doc(db, 'users', uid), updates);
-      return await Auth.getUserData(uid);
+      const users = await getAllUsers();
+      if (!users[uid]) return null;
+      users[uid] = { ...users[uid], ...updates };
+      await saveAllUsers(users);
+      return { ...users[uid], uid };
     } catch { return null; }
   },
 
   async logActivity(uid) {
     try {
-      const user = await Auth.getUserData(uid);
+      const users = await getAllUsers();
+      const user = users[uid];
       if (!user) return null;
-      const today     = new Date().toDateString();
+      const today = new Date().toDateString();
       const yesterday = new Date(Date.now() - 86400000).toDateString();
       let streak = user.streak || 0;
       if (user.lastActive === today) {
-        // already counted today, no change
       } else if (user.lastActive === yesterday) {
         streak += 1;
       } else {
         streak = 1;
       }
-      await updateDoc(doc(db, 'users', uid), { streak, lastActive: today });
-      return await Auth.getUserData(uid);
+      users[uid] = { ...user, streak, lastActive: today };
+      await saveAllUsers(users);
+      return { ...users[uid], uid };
     } catch { return null; }
   },
 };
