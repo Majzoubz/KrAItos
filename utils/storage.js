@@ -1,24 +1,23 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const PREFIX = 'fitlife_data_';
+import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 export const Storage = {
   async get(key) {
     try {
-      const raw = await AsyncStorage.getItem(PREFIX + key);
-      return raw ? JSON.parse(raw) : null;
+      const snap = await getDoc(doc(db, 'userData', key));
+      return snap.exists() ? snap.data().value : null;
     } catch { return null; }
   },
 
   async set(key, value) {
     try {
-      await AsyncStorage.setItem(PREFIX + key, JSON.stringify(value));
+      await setDoc(doc(db, 'userData', key), { value, updatedAt: Date.now() });
       return true;
     } catch { return false; }
   },
 
   async remove(key) {
-    try { await AsyncStorage.removeItem(PREFIX + key); } catch {}
+    try { await deleteDoc(doc(db, 'userData', key)); } catch {}
   },
 };
 
