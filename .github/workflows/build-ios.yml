@@ -35,21 +35,29 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd ios
-          pod install
+          pod install --repo-update
 
-      - name: List available schemes
-        run: |
-          xcodebuild -workspace ios/FitLife.xcworkspace -list
+      - name: Install xcpretty
+        run: gem install xcpretty
+
+      - name: List schemes
+        run: xcodebuild -workspace ios/FitLife.xcworkspace -list
 
       - name: Build iOS app (no code signing)
         run: |
+          set -o pipefail
           xcodebuild \
             -workspace ios/FitLife.xcworkspace \
             -scheme FitLife \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath ios/build \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            | xcpretty --color
 
       - name: Create Payload folder
         run: mkdir -p Payload
