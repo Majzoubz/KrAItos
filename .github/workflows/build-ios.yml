@@ -14,7 +14,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -33,19 +33,8 @@ jobs:
         run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
-        run: |
-          cd ios
-          pod install --repo-update
-
-      - name: Bundle React Native JS manually
-        run: |
-          mkdir -p ios/main.jsbundle
-          npx react-native bundle \
-            --platform ios \
-            --dev false \
-            --entry-file index.js \
-            --bundle-output ios/main.jsbundle \
-            --assets-dest ios
+        run: pod install --repo-update
+        working-directory: ios
 
       - name: Install xcpretty
         run: gem install xcpretty
@@ -64,7 +53,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
-            SKIP_BUNDLING=YES \
             | xcpretty --color
 
       - name: Create Payload folder
