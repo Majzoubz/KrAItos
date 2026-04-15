@@ -7,37 +7,27 @@ import {
 import { C } from '../constants/theme';
 import { Storage, KEYS } from '../utils/storage';
 import { Auth } from '../utils/auth';
-import Svg, { Circle } from 'react-native-svg';
 
-const { width: SCREEN_W } = Dimensions.get('window');
 const RING_SIZE = 180;
-const RING_STROKE = 10;
-const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
-const RING_CIRC = 2 * Math.PI * RING_RADIUS;
 
 function CalorieRing({ consumed, target }) {
   const pct = target > 0 ? Math.min(consumed / target, 1) : 0;
-  const offset = RING_CIRC * (1 - pct);
   const remaining = Math.max(target - consumed, 0);
+  const deg = Math.round(pct * 360);
+
+  const ringStyle = Platform.OS === 'web' ? {
+    background: `conic-gradient(${C.green} ${deg}deg, ${C.border} ${deg}deg)`,
+  } : {
+    backgroundColor: C.border,
+  };
 
   return (
     <View style={s.ringWrap}>
-      <Svg width={RING_SIZE} height={RING_SIZE} style={s.ringSvg}>
-        <Circle
-          cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS}
-          stroke={C.border} strokeWidth={RING_STROKE} fill="none"
-        />
-        <Circle
-          cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS}
-          stroke={C.green} strokeWidth={RING_STROKE} fill="none"
-          strokeDasharray={RING_CIRC} strokeDashoffset={offset}
-          strokeLinecap="round"
-          rotation="-90" origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}
-        />
-      </Svg>
-      <View style={s.ringCenter}>
-        <Text style={s.ringBig}>{remaining}</Text>
-        <Text style={s.ringSub}>remaining</Text>
+      <View style={[s.ringOuter, ringStyle]}>
+        <View style={s.ringInnerCut}>
+          <Text style={s.ringBig}>{remaining}</Text>
+          <Text style={s.ringSub}>remaining</Text>
+        </View>
       </View>
     </View>
   );
@@ -318,8 +308,14 @@ const s = StyleSheet.create({
 
   calorieArea: { alignItems: 'center', paddingTop: 28, paddingBottom: 20 },
   ringWrap: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
-  ringSvg: { position: 'absolute' },
-  ringCenter: { alignItems: 'center' },
+  ringOuter: {
+    width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ringInnerCut: {
+    width: RING_SIZE - 20, height: RING_SIZE - 20, borderRadius: (RING_SIZE - 20) / 2,
+    backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center',
+  },
   ringBig: { color: C.white, fontSize: 40, fontWeight: '900' },
   ringSub: { color: C.muted, fontSize: 12, marginTop: 2 },
   calStats: {
