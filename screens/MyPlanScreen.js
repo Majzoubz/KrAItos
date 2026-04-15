@@ -13,10 +13,10 @@ export default function MyPlanScreen({ user, onNavigate }) {
 
   const loadPlan = useCallback(async () => {
     setLoading(true);
-    const p = await Storage.get(KEYS.PLAN(user.email));
+    const p = await Storage.get(KEYS.PLAN(user.email || user.uid));
     setPlan(p);
     setLoading(false);
-  }, [user.email]);
+  }, [user.email, user.uid]);
 
   useEffect(() => { loadPlan(); }, [loadPlan]);
 
