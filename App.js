@@ -5,6 +5,7 @@ import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Image, Pla
 import { Auth } from './utils/auth';
 import { C } from './constants/theme';
 import { isWideWeb } from './utils/platform';
+import { Storage, KEYS } from './utils/storage';
 import WelcomeScreen       from './screens/WelcomeScreen';
 import OnboardingScreen    from './screens/OnboardingScreen';
 import AuthScreen          from './screens/AuthScreen';
@@ -79,6 +80,15 @@ function App() {
     try {
       await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
       await AsyncStorage.setItem(ONBOARDING_DATA_KEY, JSON.stringify(data));
+      const uid = user?.email || user?.uid;
+      if (uid) {
+        await Storage.set(KEYS.ONBOARDING(uid), {
+          ...data,
+          completedAt: Date.now(),
+          email: user?.email,
+          fullName: user?.fullName,
+        });
+      }
     } catch (e) {
       console.warn('Failed to save onboarding data:', e);
     }

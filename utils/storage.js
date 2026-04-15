@@ -24,6 +24,7 @@ export const Storage = {
 const cleanUid = (uid) => uid ? uid.replace(/__at__/g, '@').replace(/__dot__/g, '.') : uid;
 
 export const KEYS = {
+  ONBOARDING:(uid)        => 'onboarding_' + cleanUid(uid),
   PLAN:      (uid)        => 'plan_'    + cleanUid(uid),
   MEALS:     (uid)        => 'meals_'   + cleanUid(uid),
   WEIGHT:    (uid)        => 'weight_'  + cleanUid(uid),
