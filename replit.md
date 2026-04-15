@@ -20,22 +20,24 @@ screens/
   WelcomeScreen.js  # Animated landing page with logo, glow effects, feature grid
   AuthScreen.js     # Login / Sign Up (defaults to signup first)
   OnboardingScreen.js # 19-step questionnaire with section transitions & building screen
-  HomeScreen.js     # Dashboard
+  HomeScreen.js     # Plan dashboard — calories, macros, meals, workouts, water
   FoodScannerScreen.js  # Camera food analysis
   FoodlogScreen.js  # Food log history
-  AICoachScreen.js  # AI chat coach
-  MyPlanScreen.js   # Personalized plans
+  AICoachScreen.js  # AI plan generator with onboarding data prefill
+  MyPlanScreen.js   # Full plan view with nutrition/workout/tips tabs
   TrackerScreen.js  # Water & streak tracking
   ARScreen.js       # AR workout guide
-  ProfileScreen.js  # User profile
+  ProfileScreen.js  # User profile (green-only accent)
 components/
   BottomNav.js      # Mobile bottom navigation
   WebLayout.js      # Desktop sidebar layout with logo
+  FloatingChatButton.js # Floating GreenGain logo FAB → opens AI Coach
   UI.js             # Shared UI primitives
 utils/
   firebase.js       # Firebase init & Firestore (env var based)
   auth.js           # Auth logic (custom hash + Firestore, not Firebase Auth SDK)
-  api.js            # Groq AI integration
+  api.js            # Groq AI integration (max_tokens: 4000)
+  planGenerator.js  # Generates complete AI plan from 19 onboarding data points
   storage.js        # Firestore data storage
   platform.js       # Platform detection helpers
 constants/
@@ -67,8 +69,8 @@ This serves the web version at port 5000 via Metro bundler.
    - **Your Goal** (3 steps): Primary goal, target weight, weekly rate of change
    - **Program** (4 steps): Nutrition approach, training preference, calorie strategy, protein target
    - Animated section transitions between each section
-   - "Building Your Program" screen with phase checklist at the end
-4. **Main App** — Dashboard with bottom nav (mobile) or sidebar (desktop)
+   - "Building Your Program" screen with phase checklist — simultaneously calls Groq API to generate full personalized plan (30s timeout fallback)
+4. **Main App** — Plan dashboard with bottom nav (mobile) or sidebar (desktop); floating chat button on all screens
 
 Returning users who already completed onboarding skip directly to Home after login.
 

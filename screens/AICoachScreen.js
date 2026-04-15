@@ -7,9 +7,11 @@ import { C } from '../constants/theme';
 import { callAI, parseJSON } from '../utils/api';
 import { Auth } from '../utils/auth';
 import { Storage, KEYS } from '../utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const GOALS    = ['Lose Fat', 'Build Muscle', 'Endurance', 'Stay Healthy'];
 const ACTIVITY = ['Sedentary', 'Light', 'Moderate', 'Active', 'Very Active'];
+const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
 export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
   const [loading, setLoading]     = useState(false);
@@ -23,10 +25,10 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
   const [injuries, setInjuries]   = useState('');
 
   useEffect(() => {
-    Storage.get(KEYS.PLAN(user.email)).then(p => {
+    const loadData = async () => {
+      const p = await Storage.get(KEYS.PLAN(user.email));
       if (p) {
         setExisting(true);
-        // Pre-fill form with previous values
         if (p.userProfile) {
           setAge(String(p.userProfile.age || ''));
           setGender(p.userProfile.gender || 'Male');
@@ -35,8 +37,36 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
           setGoal(p.userProfile.goal || 'Lose Fat');
           setActivity(p.userProfile.activity || 'Moderate');
         }
+        return;
       }
-    });
+      try {
+        const raw = await AsyncStorage.getItem(ONBOARDING_DATA_KEY);
+        if (raw) {
+          const d = JSON.parse(raw);
+          if (d.gender) setGender(d.gender);
+          if (d.weight) setWeight(String(d.weight));
+          if (d.height) setHeight(String(d.height));
+          if (d.goal) {
+            const goalMap = { 'Lose weight': 'Lose Fat', 'Build muscle': 'Build Muscle', 'Get healthier': 'Stay Healthy', 'Improve endurance': 'Endurance' };
+            setGoal(goalMap[d.goal] || d.goal);
+          }
+          if (d.activityLevel) {
+            const actMap = { 'Mostly sitting': 'Sedentary', 'Lightly active': 'Light', 'Moderately active': 'Moderate', 'Very active': 'Active', 'Extremely active': 'Very Active' };
+            setActivity(actMap[d.activityLevel] || d.activityLevel);
+          }
+          if (d.birthday) {
+            const parts = d.birthday.match(/(\d+)/g);
+            if (parts && parts.length >= 3) {
+              let year = parseInt(parts[0].length === 4 ? parts[0] : parts[2]);
+              if (year < 100) year += 2000;
+              const a = new Date().getFullYear() - year;
+              if (a > 0 && a < 120) setAge(String(a));
+            }
+          }
+        }
+      } catch {}
+    };
+    loadData();
   }, []);
 
   const generate = async () => {
@@ -67,7 +97,7 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
     setLoading(true);
     try {
       const raw = await callAI(
-        'You are an elite fitness coach and registered dietitian. Return ONLY valid JSON with no markdown and no extra text. Use this exact structure: {"summary":"2 sentence assessment","bmi":number,"bmiCategory":"string","dailyCalories":number,"protein":number,"carbs":number,"fat":number,"mealPlan":[{"meal":"Breakfast","foods":["food1","food2"],"calories":number},{"meal":"Lunch","foods":["food1","food2"],"calories":number},{"meal":"Dinner","foods":["food1","food2"],"calories":number},{"meal":"Snack","foods":["food1"],"calories":number}],"workoutPlan":[{"day":"Monday","type":"Strength","exercises":["exercise - sets x reps"]},{"day":"Wednesday","type":"Cardio","exercises":["exercise - duration"]},{"day":"Friday","type":"Full Body","exercises":["exercise - sets x reps"]}],"weeklyTips":["tip1","tip2","tip3"]}',
+        'You are an elite fitness coach and registered dietitian. Return ONLY valid JSON with no markdown and no extra text. Use this exact structure: {"summary":"2-3 sentence assessment","bmi":number,"bmiCategory":"string","dailyCalories":number,"protein":number,"proteinPct":number,"carbs":number,"carbsPct":number,"fat":number,"fatPct":number,"mealPlan":[{"meal":"Breakfast","time":"7:00 AM","foods":["food1","food2"],"calories":number,"protein":number,"carbs":number,"fat":number},{"meal":"Lunch","time":"12:30 PM","foods":["food1","food2"],"calories":number,"protein":number,"carbs":number,"fat":number},{"meal":"Dinner","time":"7:00 PM","foods":["food1","food2"],"calories":number,"protein":number,"carbs":number,"fat":number},{"meal":"Snack","time":"3:30 PM","foods":["food1"],"calories":number,"protein":number,"carbs":number,"fat":number}],"workoutPlan":[{"day":"Monday","type":"Strength","duration":"60 min","exercises":[{"name":"exercise","sets":3,"reps":"8-12","rest":"90s"}]},{"day":"Wednesday","type":"Cardio","duration":"30 min","exercises":[{"name":"exercise","sets":1,"reps":"30 min","rest":""}]},{"day":"Friday","type":"Full Body","duration":"60 min","exercises":[{"name":"exercise","sets":3,"reps":"8-12","rest":"90s"}]}],"weeklyTips":["tip1","tip2","tip3"]}',
         'Age: ' + age + ', Gender: ' + gender + ', Weight: ' + weight + 'kg, Height: ' + height + 'cm, Goal: ' + goal + ', Activity: ' + activity + ', Injuries: ' + (injuries.trim() || 'None')
       );
       const parsed = parseJSON(raw, null);
@@ -80,10 +110,10 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
         userProfile: { age, gender, weight, height, goal, activity },
       };
       await Storage.set(KEYS.PLAN(user.email), planData);
-      const updated = await Auth.updateUser(user.email, {
+      const updated = await Auth.updateUser(user.uid, {
         workoutsLogged: (user.workoutsLogged || 0) + 1,
       });
-      const withStreak = await Auth.logActivity(user.email);
+      const withStreak = await Auth.logActivity(user.uid);
       if (withStreak && onUserUpdate) onUserUpdate(withStreak);
       else if (updated && onUserUpdate) onUserUpdate(updated);
 
@@ -200,9 +230,9 @@ const s = StyleSheet.create({
   titleBar: { padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },
   titleBarSub: { color: C.muted, fontSize: 12, marginTop: 3 },
-  scroll: { padding: 20, paddingBottom: 40 },
-  existingBanner: { backgroundColor: C.blue + '18', borderRadius: 12, padding: 12, marginBottom: 20, borderLeftWidth: 3, borderLeftColor: C.blue },
-  existingBannerText: { color: C.blue, fontSize: 13, lineHeight: 20 },
+  scroll: { padding: 20, paddingBottom: 100 },
+  existingBanner: { backgroundColor: C.greenGlow2, borderRadius: 12, padding: 12, marginBottom: 20, borderLeftWidth: 3, borderLeftColor: C.green },
+  existingBannerText: { color: C.green, fontSize: 13, lineHeight: 20 },
   row: { flexDirection: 'row', marginBottom: 4 },
   label: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 6, marginTop: 4 },
   input: { backgroundColor: C.surface, color: C.white, padding: 14, borderRadius: 12, fontSize: 15, marginBottom: 16, borderWidth: 1, borderColor: C.border },

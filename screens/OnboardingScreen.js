@@ -76,9 +76,11 @@ function SectionTransition({ section, onContinue }) {
   );
 }
 
-function BuildingScreen({ onDone }) {
+function BuildingScreen({ onDone, data, userEmail }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [phase, setPhase] = useState(0);
+  const [apiDone, setApiDone] = useState(false);
+  const [animDone, setAnimDone] = useState(false);
   const phases = [
     'Analyzing your body metrics...',
     'Calculating metabolic rate...',
@@ -95,9 +97,27 @@ function BuildingScreen({ onDone }) {
         return p + 1;
       });
     }, 800);
-    const timer = setTimeout(onDone, 4500);
-    return () => { clearInterval(interval); clearTimeout(timer); };
+    const timer = setTimeout(() => setAnimDone(true), 4500);
+
+    let cancelled = false;
+    const genPlan = async () => {
+      try {
+        const { generatePlanFromOnboarding } = require('../utils/planGenerator');
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000));
+        await Promise.race([generatePlanFromOnboarding(data, userEmail), timeout]);
+      } catch (e) {
+        console.warn('Plan generation failed during onboarding:', e.message);
+      }
+      if (!cancelled) setApiDone(true);
+    };
+    genPlan();
+
+    return () => { cancelled = true; clearInterval(interval); clearTimeout(timer); };
   }, []);
+
+  useEffect(() => {
+    if (apiDone && animDone) onDone();
+  }, [apiDone, animDone]);
 
   return (
     <View style={bs.container}>
@@ -199,7 +219,7 @@ export default function OnboardingScreen({ onComplete, user }) {
   };
 
   if (showBuilding) {
-    return <BuildingScreen onDone={() => onComplete(data)} />;
+    return <BuildingScreen onDone={() => onComplete(data)} data={data} userEmail={user?.email || user?.uid} />;
   }
 
   if (showTransition) {

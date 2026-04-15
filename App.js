@@ -1,11 +1,10 @@
 import { registerRootComponent } from 'expo';
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Image, Platform, Animated } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
 
 import { Auth } from './utils/auth';
 import { C } from './constants/theme';
 import { isWideWeb } from './utils/platform';
-
 import WelcomeScreen       from './screens/WelcomeScreen';
 import OnboardingScreen    from './screens/OnboardingScreen';
 import AuthScreen          from './screens/AuthScreen';
@@ -19,6 +18,7 @@ import ARScreen            from './screens/ARScreen';
 import ProfileScreen       from './screens/ProfileScreen';
 import BottomNav           from './components/BottomNav';
 import WebLayout           from './components/WebLayout';
+import FloatingChatButton  from './components/FloatingChatButton';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -140,6 +140,7 @@ function App() {
     return (
       <WebLayout current={screen} onNavigate={navigate} user={user}>
         {renderScreen()}
+        <FloatingChatButton onPress={() => navigate('coach')} currentScreen={screen} />
       </WebLayout>
     );
   }
@@ -147,6 +148,7 @@ function App() {
   return (
     <View style={s.root}>
       <View style={s.content}>{renderScreen()}</View>
+      {isAuthed && <FloatingChatButton onPress={() => navigate('coach')} currentScreen={screen} />}
       {isAuthed && <BottomNav current={screen} onNavigate={navigate} />}
     </View>
   );
