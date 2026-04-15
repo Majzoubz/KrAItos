@@ -35,7 +35,9 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
           setWeight(String(p.userProfile.weight || ''));
           setHeight(String(p.userProfile.height || ''));
           setGoal(p.userProfile.goal || 'Lose Fat');
-          setActivity(p.userProfile.activity || 'Moderate');
+          const actLegacy = { 'Light': 'Lightly Active', 'Moderate': 'Moderately Active', 'Active': 'Very Active', 'Very Active': 'Very Active' };
+          const rawAct = p.userProfile.activity || 'Moderately Active';
+          setActivity(actLegacy[rawAct] || rawAct);
         }
         return;
       }

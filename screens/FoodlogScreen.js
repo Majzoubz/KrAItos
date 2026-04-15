@@ -39,7 +39,7 @@ export default function FoodLogScreen({ user, onNavigate }) {
     setPlan(planData);
     setAiFeedback(null);
     setLoading(false);
-  }, [selectedDate, user.uid]);
+  }, [selectedDate, user.uid, user.email]);
 
   useEffect(() => { load(); }, [load]);
 
