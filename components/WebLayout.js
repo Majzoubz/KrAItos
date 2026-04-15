@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { C } from '../constants/theme';
 
 const NAV_ITEMS = [
@@ -17,9 +17,9 @@ export default function WebLayout({ current, onNavigate, user, children }) {
     <View style={s.root}>
       <View style={s.sidebar}>
         <View style={s.logo}>
-          <View style={s.logoCircle}><Text style={s.logoText}>FL</Text></View>
+          <Image source={require('../assets/logo.png')} style={s.logoImg} resizeMode="contain" />
           <View>
-            <Text style={s.logoName}>FitLife</Text>
+            <Text style={s.logoName}>GreenGain</Text>
             <Text style={s.logoSub}>AI FITNESS</Text>
           </View>
         </View>
@@ -63,8 +63,7 @@ const s = StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: C.bg },
   sidebar: { width: 240, backgroundColor: C.surface, borderRightWidth: 1, borderRightColor: C.border, paddingTop: 32, paddingHorizontal: 16, justifyContent: 'space-between' },
   logo: { flexDirection: 'row', alignItems: 'center', marginBottom: 40, paddingHorizontal: 8 },
-  logoCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: C.green, alignItems: 'center', justifyContent: 'center', marginRight: 10, backgroundColor: C.bg },
-  logoText: { color: C.green, fontSize: 13, fontWeight: '900' },
+  logoImg: { width: 36, height: 36, marginRight: 10 },
   logoName: { color: C.white, fontSize: 20, fontWeight: '900', letterSpacing: 1 },
   logoSub: { color: C.green, fontSize: 8, fontWeight: '700', letterSpacing: 3 },
   nav: { flex: 1 },

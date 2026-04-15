@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ScrollView,
-  Alert, ActivityIndicator, Animated,
+  Alert, ActivityIndicator, Animated, Image,
 } from 'react-native';
 import { C } from '../constants/theme';
 import { Auth } from '../utils/auth';
@@ -17,9 +17,13 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading]       = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+    ]).start();
   }, []);
 
   const handle = async () => {
@@ -58,17 +62,18 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
 
   return (
     <View style={s.safe}>
+      <View style={s.glowTop} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-          <Animated.View style={{ opacity: fadeAnim }}>
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
             <View style={s.topSection}>
-              <View style={s.logoRing}><Text style={s.logoText}>FL</Text></View>
+              <Image source={require('../assets/logo.png')} style={s.logoImage} resizeMode="contain" />
               <Text style={s.heading}>
                 {mode === 'signup' ? 'Create your account' : 'Welcome back'}
               </Text>
               <Text style={s.subheading}>
-                {mode === 'signup' ? 'Sign up to start your transformation' : 'Log in to continue your journey'}
+                {mode === 'signup' ? 'Join GreenGain to start your transformation' : 'Log in to continue your journey'}
               </Text>
             </View>
 
@@ -134,17 +139,22 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: C.bg, overflow: 'hidden' },
+  glowTop: {
+    position: 'absolute', top: -180, left: '50%', marginLeft: -180,
+    width: 360, height: 360, borderRadius: 180,
+    backgroundColor: C.greenGlow2,
+    ...(Platform.OS === 'web' ? { filter: 'blur(120px)' } : { opacity: 0.15 }),
+  },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: 40 },
-  topSection: { alignItems: 'center', marginBottom: 32 },
-  logoRing: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: C.green, alignItems: 'center', justifyContent: 'center', marginBottom: 20, backgroundColor: C.bg },
-  logoText: { color: C.green, fontSize: 20, fontWeight: '900', letterSpacing: 2 },
-  heading: { fontSize: 28, fontWeight: '800', color: C.white, marginBottom: 8 },
-  subheading: { fontSize: 15, color: C.muted },
+  topSection: { alignItems: 'center', marginBottom: 36 },
+  logoImage: { width: 80, height: 80, marginBottom: 24 },
+  heading: { fontSize: 28, fontWeight: '800', color: C.white, marginBottom: 8, letterSpacing: 0.5 },
+  subheading: { fontSize: 15, color: C.muted, textAlign: 'center' },
   fieldGroup: { marginBottom: 18 },
-  label: { color: C.muted, fontSize: 11, fontWeight: '700', marginBottom: 8, letterSpacing: 1.5 },
-  input: { backgroundColor: C.surface, color: C.white, padding: 16, borderRadius: 14, fontSize: 16, borderWidth: 1.5, borderColor: C.border },
-  passWrap: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, borderWidth: 1.5, borderColor: C.border, alignItems: 'center' },
+  label: { color: C.mutedLight, fontSize: 11, fontWeight: '700', marginBottom: 8, letterSpacing: 1.5 },
+  input: { backgroundColor: C.surface, color: C.white, padding: 16, borderRadius: 14, fontSize: 16, borderWidth: 1, borderColor: C.border },
+  passWrap: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border, alignItems: 'center' },
   passInput: { flex: 1, color: C.white, padding: 16, fontSize: 16 },
   eyeBtn: { paddingHorizontal: 16 },
   eyeText: { color: C.green, fontSize: 11, fontWeight: '800', letterSpacing: 1 },

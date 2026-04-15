@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
-  TextInput, Animated, Platform, ActivityIndicator,
+  TextInput, Animated, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { C } from '../constants/theme';
 
@@ -104,9 +104,7 @@ function BuildingScreen({ onDone }) {
       <View style={bs.glow} />
       <Animated.View style={[bs.content, { opacity: fadeAnim }]}>
         <View style={bs.logoWrap}>
-          <View style={bs.logoInner}>
-            <Text style={bs.logoText}>FL</Text>
-          </View>
+          <Image source={require('../assets/logo.png')} style={bs.logoImage} resizeMode="contain" />
         </View>
         <Text style={bs.title}>Building Your Program</Text>
         <Text style={bs.subtitle}>This will just take a moment</Text>
@@ -633,8 +631,7 @@ const bs = StyleSheet.create({
   },
   content: { alignItems: 'center', paddingHorizontal: 40 },
   logoWrap: { width: 90, height: 90, borderRadius: 45, backgroundColor: C.greenGlow2, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
-  logoInner: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: C.green, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
-  logoText: { color: C.green, fontSize: 22, fontWeight: '900', letterSpacing: 2 },
+  logoImage: { width: 70, height: 70 },
   title: { color: C.white, fontSize: 24, fontWeight: '800', marginBottom: 8 },
   subtitle: { color: C.muted, fontSize: 15, marginBottom: 36 },
   phaseList: { width: 280 },

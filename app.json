@@ -1,27 +1,27 @@
 {
   "expo": {
-    "name": "FitLife",
-    "slug": "fitlife",
+    "name": "GreenGain",
+    "slug": "greengain",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "splash": {
-      "backgroundColor": "#0A0A0F"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.yourname.fitlife",
+      "bundleIdentifier": "com.greengain.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "FitLife uses the camera to scan your meal and analyze its nutritional content.",
-        "NSPhotoLibraryUsageDescription": "FitLife accesses your photo library so you can pick a meal photo for analysis.",
-        "NSPhotoLibraryAddUsageDescription": "FitLife saves meal photos to your library."
+        "NSCameraUsageDescription": "GreenGain uses the camera to scan your meal and analyze its nutritional content.",
+        "NSPhotoLibraryUsageDescription": "GreenGain accesses your photo library so you can pick a meal photo for analysis.",
+        "NSPhotoLibraryAddUsageDescription": "GreenGain saves meal photos to your library."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0A0A0F"
+        "backgroundColor": "#000000"
       },
-      "package": "com.yourname.fitlife",
+      "package": "com.greengain.app",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",

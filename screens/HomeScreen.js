@@ -91,7 +91,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
         {/* Onboarding for new users */}
         {isNew && (
           <View style={s.onboardCard}>
-            <Text style={s.onboardTitle}>Get started with FitLife</Text>
+            <Text style={s.onboardTitle}>Get started with GreenGain</Text>
             <TouchableOpacity style={s.onboardStep} onPress={() => onNavigate('coach')}>
               <View style={s.onboardNum}><Text style={s.onboardNumText}>1</Text></View>
               <View style={{ flex: 1 }}>

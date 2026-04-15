@@ -1,7 +1,7 @@
-# FitLife - AI-Powered Fitness & Nutrition App
+# GreenGain - AI-Powered Fitness & Nutrition App
 
 ## Overview
-FitLife is a React Native / Expo fitness application that runs on web via `react-native-web`. It provides AI-powered nutrition coaching, food scanning, workout planning, and progress tracking. Inspired by MacroFactor and Cal AI.
+GreenGain is a React Native / Expo fitness application that runs on web via `react-native-web`. It provides AI-powered nutrition coaching, food scanning, workout planning, and progress tracking. Inspired by MacroFactor and Cal AI.
 
 ## Tech Stack
 - **Framework**: React Native with Expo SDK 54
@@ -14,8 +14,10 @@ FitLife is a React Native / Expo fitness application that runs on web via `react
 ## Project Structure
 ```
 App.js              # Root entry, manual navigation (no expo-router)
+assets/
+  logo.png          # GreenGain neon green logo (dumbbell + apple + leaf)
 screens/
-  WelcomeScreen.js  # Animated landing page with glow effects
+  WelcomeScreen.js  # Animated landing page with logo, glow effects, feature grid
   AuthScreen.js     # Login / Sign Up (defaults to signup first)
   OnboardingScreen.js # 19-step questionnaire with section transitions & building screen
   HomeScreen.js     # Dashboard
@@ -28,16 +30,16 @@ screens/
   ProfileScreen.js  # User profile
 components/
   BottomNav.js      # Mobile bottom navigation
-  WebLayout.js      # Desktop sidebar layout
+  WebLayout.js      # Desktop sidebar layout with logo
   UI.js             # Shared UI primitives
 utils/
-  firebase.js       # Firebase init & Firestore
+  firebase.js       # Firebase init & Firestore (env var based)
   auth.js           # Auth logic (custom hash + Firestore, not Firebase Auth SDK)
   api.js            # Groq AI integration
-  storage.js        # AsyncStorage wrapper
+  storage.js        # Firestore data storage
   platform.js       # Platform detection helpers
 constants/
-  theme.js          # Color palette & design tokens
+  theme.js          # Color palette & design tokens (lime green #7FFF00)
 ```
 
 ## Environment Variables Required
@@ -48,18 +50,18 @@ The app needs the following environment variables (set as Replit Secrets):
 - `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
 - `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `EXPO_PUBLIC_FIREBASE_APP_ID`
-- `EXPO_PUBLIC_GROQ_API_KEY` (used in utils/api.js)
+- `EXPO_PUBLIC_GROQ_KEY` (used in utils/api.js)
 
 ## Running the App
 The workflow "Start application" runs:
 ```
-EXPO_NO_DOTENV=1 npx expo start --web --port 5000 --tunnel
+EXPO_NO_DOTENV=1 npx expo start --web --port 5000 --host lan
 ```
 This serves the web version at port 5000 via Metro bundler.
 
 ## Navigation Flow
-1. **Welcome Screen** — Animated landing with FitLife branding and "Get Started"
-2. **Auth Screen** — Sign Up (default) / Log In
+1. **Welcome Screen** — Animated landing with GreenGain logo, pulsing glow, feature grid
+2. **Auth Screen** — Sign Up (default) / Log In with logo
 3. **Onboarding** — 19-step questionnaire divided into sections:
    - **About You** (12 steps): Gender, birthday, units, height, weight, max weight, weight trend, body fat, activity level, training experience, cardio experience, exercise frequency
    - **Your Goal** (3 steps): Primary goal, target weight, weekly rate of change
@@ -71,12 +73,13 @@ This serves the web version at port 5000 via Metro bundler.
 Returning users who already completed onboarding skip directly to Home after login.
 
 ## Design System
-- **Color palette**: Neon green (#00FF6A) + pure black (#000000) + white (#FFFFFF)
+- **Color palette**: Lime/Chartreuse green (#7FFF00) + pure black (#000000) + white (#FFFFFF)
 - **Theme file**: `constants/theme.js`
-- **Surface colors**: `#0D0D0D` (surface), `#141414` (card), `#1F1F1F` (border)
-- **Green glows**: `rgba(0,255,106,0.15)` and `rgba(0,255,106,0.08)`
+- **Surface colors**: `#0A0A0A` (surface), `#111111` (card), `#1A1A1A` (border)
+- **Green glows**: `rgba(127,255,0,0.15)`, `rgba(127,255,0,0.08)`, `rgba(127,255,0,0.04)`
 - **Cards**: Dark surface with subtle borders, rounded corners (16px)
-- **Buttons**: Neon green, bold text, rounded 16px
+- **Buttons**: Lime green, bold text, rounded 16px
+- **Logo**: Neon green dumbbell + apple + leaf icon on black
 - **Onboarding inputs**: Visual cards for selection, icons, grid layouts for frequency
 
 ## Layout

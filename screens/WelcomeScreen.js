@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  StyleSheet, Text, View, TouchableOpacity, Animated, Platform,
+  StyleSheet, Text, View, TouchableOpacity, Animated, Platform, Image,
 } from 'react-native';
 import { C } from '../constants/theme';
 
@@ -9,33 +9,43 @@ export default function WelcomeScreen({ onStart }) {
   const slideUp = useRef(new Animated.Value(60)).current;
   const btnSlide = useRef(new Animated.Value(40)).current;
   const btnFade = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.7)).current;
+  const glowPulse = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
         Animated.timing(fadeIn, { toValue: 1, duration: 1000, useNativeDriver: true }),
         Animated.timing(slideUp, { toValue: 0, duration: 1000, useNativeDriver: true }),
+        Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
       ]),
       Animated.parallel([
         Animated.timing(btnFade, { toValue: 1, duration: 600, useNativeDriver: true }),
         Animated.timing(btnSlide, { toValue: 0, duration: 600, useNativeDriver: true }),
       ]),
     ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(glowPulse, { toValue: 0.6, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
   }, []);
 
   return (
     <View style={s.container}>
       <View style={s.glowTop} />
       <View style={s.glowBottom} />
+      <View style={s.glowCenter} />
 
       <Animated.View style={[s.content, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}>
-        <View style={s.logoBadge}>
-          <View style={s.logoInner}>
-            <Text style={s.logoText}>FL</Text>
-          </View>
-        </View>
+        <Animated.View style={[s.logoWrap, { transform: [{ scale: logoScale }] }]}>
+          <Animated.View style={[s.logoGlow, { opacity: glowPulse }]} />
+          <Image source={require('../assets/logo.png')} style={s.logoImage} resizeMode="contain" />
+        </Animated.View>
 
-        <Text style={s.brand}>FitLife</Text>
+        <Text style={s.brand}>GreenGain</Text>
         <Text style={s.tagline}>YOUR AI FITNESS COACH</Text>
 
         <View style={s.divider} />
@@ -46,13 +56,15 @@ export default function WelcomeScreen({ onStart }) {
 
         <View style={s.featureGrid}>
           {[
-            { icon: '◎', label: 'Smart Nutrition' },
-            { icon: '◈', label: 'AI Coaching' },
-            { icon: '◇', label: 'Meal Scanner' },
-            { icon: '○', label: 'Progress Track' },
+            { icon: '⚡', label: 'Smart Nutrition' },
+            { icon: '🧠', label: 'AI Coaching' },
+            { icon: '📸', label: 'Meal Scanner' },
+            { icon: '📊', label: 'Progress Track' },
           ].map((f, i) => (
             <View key={i} style={s.featureItem}>
-              <Text style={s.featureIcon}>{f.icon}</Text>
+              <View style={s.featureIconWrap}>
+                <Text style={s.featureIcon}>{f.icon}</Text>
+              </View>
               <Text style={s.featureLabel}>{f.label}</Text>
             </View>
           ))}
@@ -63,7 +75,7 @@ export default function WelcomeScreen({ onStart }) {
         <TouchableOpacity style={s.startBtn} onPress={onStart} activeOpacity={0.85}>
           <Text style={s.startBtnText}>GET STARTED</Text>
         </TouchableOpacity>
-        <Text style={s.footerNote}>Free to use. No credit card required.</Text>
+        <Text style={s.footerNote}>Free to use · No credit card required</Text>
       </Animated.View>
     </View>
   );
@@ -72,39 +84,52 @@ export default function WelcomeScreen({ onStart }) {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg, justifyContent: 'space-between', overflow: 'hidden' },
   glowTop: {
-    position: 'absolute', top: -200, left: '50%', marginLeft: -200,
-    width: 400, height: 400, borderRadius: 200,
+    position: 'absolute', top: -220, left: '50%', marginLeft: -220,
+    width: 440, height: 440, borderRadius: 220,
     backgroundColor: C.greenGlow,
-    ...(Platform.OS === 'web' ? { filter: 'blur(120px)' } : { opacity: 0.2 }),
+    ...(Platform.OS === 'web' ? { filter: 'blur(140px)' } : { opacity: 0.15 }),
   },
   glowBottom: {
-    position: 'absolute', bottom: -100, right: -100,
-    width: 300, height: 300, borderRadius: 150,
-    backgroundColor: 'rgba(0,255,106,0.06)',
-    ...(Platform.OS === 'web' ? { filter: 'blur(80px)' } : { opacity: 0.15 }),
+    position: 'absolute', bottom: -120, right: -120,
+    width: 340, height: 340, borderRadius: 170,
+    backgroundColor: 'rgba(127,255,0,0.05)',
+    ...(Platform.OS === 'web' ? { filter: 'blur(100px)' } : { opacity: 0.12 }),
+  },
+  glowCenter: {
+    position: 'absolute', top: '30%', left: '50%', marginLeft: -100,
+    width: 200, height: 200, borderRadius: 100,
+    backgroundColor: 'rgba(127,255,0,0.03)',
+    ...(Platform.OS === 'web' ? { filter: 'blur(80px)' } : { opacity: 0.1 }),
   },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  logoBadge: {
-    width: 100, height: 100, borderRadius: 50,
+  logoWrap: {
+    width: 140, height: 140,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 32,
+  },
+  logoGlow: {
+    position: 'absolute', width: 160, height: 160, borderRadius: 80,
+    backgroundColor: C.greenGlow,
+    ...(Platform.OS === 'web' ? { filter: 'blur(30px)' } : {}),
+  },
+  logoImage: {
+    width: 120, height: 120,
+  },
+  brand: { color: C.white, fontSize: 46, fontWeight: '900', letterSpacing: 3, marginBottom: 8 },
+  tagline: { color: C.green, fontSize: 11, fontWeight: '700', letterSpacing: 5 },
+  divider: { width: 48, height: 2, backgroundColor: C.green + '50', marginVertical: 32, borderRadius: 1 },
+  heroText: { color: C.light, fontSize: 22, fontWeight: '600', textAlign: 'center', lineHeight: 34, marginBottom: 40, letterSpacing: 0.3 },
+  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: 340 },
+  featureItem: { width: '50%', alignItems: 'center', marginBottom: 24, paddingHorizontal: 8 },
+  featureIconWrap: {
+    width: 44, height: 44, borderRadius: 14,
     backgroundColor: C.greenGlow2,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 28,
+    marginBottom: 10,
+    borderWidth: 1, borderColor: C.green + '20',
   },
-  logoInner: {
-    width: 80, height: 80, borderRadius: 40,
-    borderWidth: 2.5, borderColor: C.green,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: C.bg,
-  },
-  logoText: { color: C.green, fontSize: 28, fontWeight: '900', letterSpacing: 3 },
-  brand: { color: C.white, fontSize: 44, fontWeight: '900', letterSpacing: 4, marginBottom: 6 },
-  tagline: { color: C.green, fontSize: 11, fontWeight: '700', letterSpacing: 4 },
-  divider: { width: 40, height: 2, backgroundColor: C.green + '40', marginVertical: 28 },
-  heroText: { color: C.light, fontSize: 22, fontWeight: '600', textAlign: 'center', lineHeight: 32, marginBottom: 36 },
-  featureGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: 320 },
-  featureItem: { width: '50%', alignItems: 'center', marginBottom: 20, paddingHorizontal: 8 },
-  featureIcon: { color: C.green, fontSize: 24, marginBottom: 6 },
-  featureLabel: { color: C.muted, fontSize: 13, fontWeight: '600' },
+  featureIcon: { fontSize: 20 },
+  featureLabel: { color: C.mutedLight, fontSize: 13, fontWeight: '600', letterSpacing: 0.3 },
   footer: { paddingHorizontal: 28, paddingBottom: Platform.OS === 'web' ? 36 : 48, alignItems: 'center' },
   startBtn: {
     backgroundColor: C.green, width: '100%', maxWidth: 340,
@@ -112,5 +137,5 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   startBtnText: { color: C.bg, fontSize: 16, fontWeight: '900', letterSpacing: 2 },
-  footerNote: { color: C.muted, fontSize: 12, marginTop: 14 },
+  footerNote: { color: C.muted, fontSize: 12, marginTop: 16, letterSpacing: 0.5 },
 });

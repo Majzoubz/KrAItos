@@ -1,6 +1,6 @@
 import { registerRootComponent } from 'expo';
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Image, Platform, Animated } from 'react-native';
 
 import { Auth } from './utils/auth';
 import { C } from './constants/theme';
@@ -22,8 +22,9 @@ import WebLayout           from './components/WebLayout';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ONBOARDING_KEY = 'fitlife_onboarding_complete';
-const ONBOARDING_DATA_KEY = 'fitlife_onboarding_data';
+const ONBOARDING_KEY = 'greengain_onboarding_complete';
+const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
+const LEGACY_ONBOARDING_KEY = 'fitlife_onboarding_complete';
 const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'coach', 'tracker', 'ar', 'profile'];
 
 function App() {
@@ -34,6 +35,16 @@ function App() {
   useEffect(() => {
     const init = async () => {
       try {
+        const legacySession = await AsyncStorage.getItem('fitlife_session_v2');
+        if (legacySession) {
+          await AsyncStorage.setItem('greengain_session_v2', legacySession);
+          await AsyncStorage.removeItem('fitlife_session_v2');
+        }
+        const legacyOnboarding = await AsyncStorage.getItem(LEGACY_ONBOARDING_KEY);
+        if (legacyOnboarding) {
+          await AsyncStorage.setItem(ONBOARDING_KEY, legacyOnboarding);
+          await AsyncStorage.removeItem(LEGACY_ONBOARDING_KEY);
+        }
         const u = await Auth.getSession();
         if (u) {
           const onboardingDone = await AsyncStorage.getItem(ONBOARDING_KEY);
@@ -99,8 +110,9 @@ function App() {
       case 'loading':
         return (
           <View style={s.loading}>
-            <View style={s.splashLogo}><Text style={s.splashLogoText}>FL</Text></View>
-            <Text style={s.splashName}>FitLife</Text>
+            <View style={s.splashGlow} />
+            <Image source={require('./assets/logo.png')} style={s.splashLogo} resizeMode="contain" />
+            <Text style={s.splashName}>GreenGain</Text>
             <ActivityIndicator color={C.green} size="large" style={{ marginTop: 32 }} />
           </View>
         );
@@ -143,10 +155,14 @@ function App() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   content: { flex: 1 },
-  loading: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
-  splashLogo: { width: 80, height: 80, borderRadius: 40, borderWidth: 2.5, borderColor: C.green, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
-  splashLogoText: { color: C.green, fontSize: 24, fontWeight: '900', letterSpacing: 3 },
-  splashName: { color: C.white, fontSize: 32, fontWeight: '900', marginTop: 16, letterSpacing: 3 },
+  loading: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  splashGlow: {
+    position: 'absolute', width: 300, height: 300, borderRadius: 150,
+    backgroundColor: C.greenGlow2,
+    ...(Platform.OS === 'web' ? { filter: 'blur(80px)' } : { opacity: 0.15 }),
+  },
+  splashLogo: { width: 100, height: 100 },
+  splashName: { color: C.white, fontSize: 34, fontWeight: '900', marginTop: 20, letterSpacing: 3 },
   errorScreen: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', padding: 40 },
   errorIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.danger + '20', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   errorIconText: { color: C.danger, fontSize: 24, fontWeight: '900' },

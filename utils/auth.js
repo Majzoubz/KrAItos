@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
-const SESSION_KEY = 'fitlife_session_v2';
+const SESSION_KEY = 'greengain_session_v2';
 
 const hashPassword = (password) => {
   let hash = 5381;
