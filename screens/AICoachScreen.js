@@ -53,7 +53,8 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
             setGoal(goalMap[d.goal] || d.goal);
           }
           if (d.activityLevel) {
-            setActivity(d.activityLevel);
+            const legacyAct = { 'Mostly sitting': 'Sedentary', 'Light': 'Lightly Active', 'Moderate': 'Moderately Active', 'Active': 'Very Active', 'Lightly active': 'Lightly Active', 'Moderately active': 'Moderately Active', 'Very active': 'Very Active', 'Extremely active': 'Extremely Active' };
+            setActivity(legacyAct[d.activityLevel] || d.activityLevel);
           }
           if (d.birthday) {
             const parts = d.birthday.match(/(\d+)/g);
