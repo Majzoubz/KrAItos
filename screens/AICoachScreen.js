@@ -26,7 +26,7 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
 
   useEffect(() => {
     const loadData = async () => {
-      const p = await Storage.get(KEYS.PLAN(user.email));
+      const p = await Storage.get(KEYS.PLAN(user.email || user.uid));
       if (p) {
         setExisting(true);
         if (p.userProfile) {
@@ -111,7 +111,7 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
         generatedAt: Date.now(),
         userProfile: { age, gender, weight, height, goal, activity },
       };
-      await Storage.set(KEYS.PLAN(user.email), planData);
+      await Storage.set(KEYS.PLAN(user.email || user.uid), planData);
       const updated = await Auth.updateUser(user.uid, {
         workoutsLogged: (user.workoutsLogged || 0) + 1,
       });
