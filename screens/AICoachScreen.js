@@ -9,8 +9,8 @@ import { Auth } from '../utils/auth';
 import { Storage, KEYS } from '../utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const GOALS    = ['Lose Fat', 'Build Muscle', 'Endurance', 'Stay Healthy'];
-const ACTIVITY = ['Sedentary', 'Light', 'Moderate', 'Active', 'Very Active'];
+const GOALS    = ['Lose Fat', 'Build Muscle', 'Recomposition', 'Maintain', 'Performance'];
+const ACTIVITY = ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active', 'Extremely Active'];
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
 export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
@@ -47,12 +47,11 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
           if (d.weight) setWeight(String(d.weight));
           if (d.height) setHeight(String(d.height));
           if (d.goal) {
-            const goalMap = { 'Lose weight': 'Lose Fat', 'Build muscle': 'Build Muscle', 'Get healthier': 'Stay Healthy', 'Improve endurance': 'Endurance' };
+            const goalMap = { 'Lose weight': 'Lose Fat', 'Build muscle': 'Build Muscle', 'Get healthier': 'Maintain', 'Improve endurance': 'Performance', 'Stay Healthy': 'Maintain', 'Endurance': 'Performance' };
             setGoal(goalMap[d.goal] || d.goal);
           }
           if (d.activityLevel) {
-            const actMap = { 'Mostly sitting': 'Sedentary', 'Lightly active': 'Light', 'Moderately active': 'Moderate', 'Very active': 'Active', 'Extremely active': 'Very Active' };
-            setActivity(actMap[d.activityLevel] || d.activityLevel);
+            setActivity(d.activityLevel);
           }
           if (d.birthday) {
             const parts = d.birthday.match(/(\d+)/g);

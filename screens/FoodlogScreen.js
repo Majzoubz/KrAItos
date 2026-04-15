@@ -31,14 +31,12 @@ export default function FoodLogScreen({ user, onNavigate }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    console.log('FoodLog: loading for uid:', user.uid, 'planKey:', KEYS.PLAN(user.uid));
     const [logData, planData] = await Promise.all([
       Storage.get(KEYS.FOODLOG(user.uid, selectedDate)),
-      Storage.get(KEYS.PLAN(user.uid)),
+      Storage.get(KEYS.PLAN(user.email || user.uid)),
     ]);
     setLog(logData || []);
     setPlan(planData);
-    console.log('FoodLog: planData=', planData ? 'FOUND' : 'NULL', 'logData length=', (logData||[]).length);
     setAiFeedback(null);
     setLoading(false);
   }, [selectedDate, user.uid]);
