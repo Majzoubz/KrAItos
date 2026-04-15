@@ -21,7 +21,7 @@ export default function AICoachScreen({ user, onUserUpdate, onPlanSaved }) {
   const [weight, setWeight]       = useState('');
   const [height, setHeight]       = useState('');
   const [goal, setGoal]           = useState('Lose Fat');
-  const [activity, setActivity]   = useState('Moderate');
+  const [activity, setActivity]   = useState('Moderately Active');
   const [injuries, setInjuries]   = useState('');
 
   useEffect(() => {
