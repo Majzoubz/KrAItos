@@ -58,11 +58,17 @@ jobs:
       - name: Create Payload folder
         run: mkdir -p Payload
 
+      - name: Find built .app
+        run: find ios/build/Build/Products -name "*.app" -maxdepth 3
+
       - name: Copy .app to Payload
-        run: cp -R ios/build/Build/Products/Release-iphoneos/FitLife.app Payload/
+        run: |
+          APP=$(find ios/build/Build/Products/Release-iphoneos -name "*.app" -maxdepth 1 | head -1)
+          if [ -z "$APP" ]; then echo "❌ No .app found — xcodebuild likely failed"; exit 1; fi
+          cp -R "$APP" Payload/
 
       - name: Package IPA
-        run: ditto -c -k --sequesterRsrc --keepParent Payload FitLife.ipa
+        run: ditto -c -k --sequesterRsrc --keepParent Payload KrAItos.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
