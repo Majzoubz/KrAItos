@@ -219,9 +219,9 @@ const makeStyles = (C) => StyleSheet.create({
     position: 'absolute',
     right: 16,
     bottom: 88, // sits above BottomNav (64–80px on mobile)
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: C.green,
     alignItems: 'center',
     justifyContent: 'center',
