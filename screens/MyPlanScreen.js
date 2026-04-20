@@ -139,55 +139,6 @@ export default function MyPlanScreen({ user, onNavigate }) {
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
-        <View style={s.adaptCard}>
-          <View style={s.adaptHeader}>
-            <Text style={s.adaptTitle}>Adaptive Coaching</Text>
-            {ctx?.workout?.adherencePct !== null && ctx?.workout?.adherencePct !== undefined && (
-              <View style={s.adhPill}>
-                <Text style={s.adhPillText}>{ctx.workout.adherencePct}% adherence</Text>
-              </View>
-            )}
-          </View>
-          <View style={s.statsRow}>
-            <View style={s.statBox}>
-              <Text style={s.statVal}>
-                {ctx?.weight?.observedKgPerWeek !== undefined && ctx?.weight?.observedKgPerWeek !== null
-                  ? `${ctx.weight.observedKgPerWeek > 0 ? '+' : ''}${ctx.weight.observedKgPerWeek}kg`
-                  : '—'}
-              </Text>
-              <Text style={s.statLabel}>Weekly trend</Text>
-            </View>
-            <View style={s.statBox}>
-              <Text style={s.statVal}>
-                {ctx?.nutrition?.avgCaloriesLast7d ?? '—'}
-              </Text>
-              <Text style={s.statLabel}>
-                Avg kcal {ctx?.nutrition?.targetCalories ? `(target ${ctx.nutrition.targetCalories})` : ''}
-              </Text>
-            </View>
-            <View style={s.statBox}>
-              <Text style={s.statVal}>
-                {ctx?.workout?.sessionsCompletedLast7d ?? 0}
-                <Text style={s.statValDim}>/{ctx?.workout?.sessionsPlannedPerWeek ?? '—'}</Text>
-              </Text>
-              <Text style={s.statLabel}>Sessions done</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[s.adaptBtn, adapting && { opacity: 0.6 }]}
-            onPress={adaptNow}
-            disabled={adapting}
-            activeOpacity={0.85}
-          >
-            {adapting
-              ? <ActivityIndicator color={C.bg} />
-              : <Text style={s.adaptBtnText}>⚡ Adapt Plan to This Week's Data</Text>}
-          </TouchableOpacity>
-          <Text style={s.adaptHint}>
-            Uses your weight log, food log and session check-ins from the last 7 days.
-          </Text>
-        </View>
-
         {lastChange && (
           <View style={s.changeCard}>
             <Text style={s.changeLabel}>WHAT CHANGED LAST UPDATE</Text>

@@ -9,6 +9,7 @@ import Svg, { Path as SvgPath, Circle as SvgCircle } from 'react-native-svg';
 import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS, subscribeSyncStatus } from '../utils/storage';
 import { OfflineBanner } from './../components/UI';
+import AdaptiveCoachingCard from '../components/AdaptiveCoachingCard';
 import { Auth } from '../utils/auth';
 import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
 import { scheduleMealReminders } from '../utils/notifications';
@@ -241,6 +242,15 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
                 onPress={() => onNavigate('progress')}
               />
             </View>
+          )}
+
+          {/* Adaptive coaching */}
+          {plan && (
+            <AdaptiveCoachingCard
+              user={user}
+              plan={plan}
+              onPlanUpdate={(updated) => setPlan(updated)}
+            />
           )}
 
           {/* Weekly review banner */}
