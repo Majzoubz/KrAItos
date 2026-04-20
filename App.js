@@ -60,9 +60,13 @@ function App() {
         }
         const u = await Auth.getSession();
         if (u) {
-          const onboardingDone = await AsyncStorage.getItem(ONBOARDING_KEY);
+          const uid = u?.email || u?.uid;
+          let userOnboarding = null;
+          if (uid) {
+            try { userOnboarding = await Storage.get(KEYS.ONBOARDING(uid)); } catch {}
+          }
           nextUser = u;
-          target = onboardingDone ? 'home' : 'onboarding';
+          target = userOnboarding ? 'home' : 'onboarding';
         }
       } catch {}
       if (nextUser) setUser(nextUser);
@@ -76,17 +80,18 @@ function App() {
 
   const handleLogin = async (u) => {
     setUser(u);
+    const uid = u?.email || u?.uid;
     try {
-      const onboardingDone = await AsyncStorage.getItem(ONBOARDING_KEY);
-      if (onboardingDone) { setScreen('home'); return; }
+      if (uid) {
+        const userOnboarding = await Storage.get(KEYS.ONBOARDING(uid));
+        if (userOnboarding) { setScreen('home'); return; }
+      }
     } catch {}
     setScreen('onboarding');
   };
 
   const handleOnboardingComplete = async (data) => {
     try {
-      await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-      await AsyncStorage.setItem(ONBOARDING_DATA_KEY, JSON.stringify(data));
       const uid = user?.email || user?.uid;
       if (uid) {
         await Storage.set(KEYS.ONBOARDING(uid), {
@@ -96,6 +101,7 @@ function App() {
           fullName: user?.fullName,
         });
       }
+      await AsyncStorage.setItem(ONBOARDING_DATA_KEY, JSON.stringify(data));
     } catch (e) {
       console.warn('Failed to save onboarding data:', e);
     }
