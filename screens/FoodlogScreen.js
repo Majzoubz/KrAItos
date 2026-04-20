@@ -227,9 +227,14 @@ export default function FoodLogScreen({ user, onNavigate }) {
                   <Text style={s.submitBtnText}>Add to Log</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={s.scanBtn} onPress={() => { setShowAdd(false); onNavigate('scanner'); }}>
-                  <Text style={s.scanBtnText}>Or scan a meal photo instead</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity style={[s.scanBtn, { flex: 1 }]} onPress={() => { setShowAdd(false); onNavigate('scanner'); }}>
+                    <Text style={s.scanBtnText}>📷 Photo scan</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.scanBtn, { flex: 1 }]} onPress={() => { setShowAdd(false); onNavigate('barcode'); }}>
+                    <Text style={s.scanBtnText}>📊 Barcode</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 

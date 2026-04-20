@@ -39,4 +39,7 @@ export const KEYS = {
   SAVED_MEALS: (uid)      => 'savedmeals_'+ cleanUid(uid),
   WEEKLY_PLAN: (uid)      => 'weekplan_'  + cleanUid(uid),
   MEAL_PREFS:  (uid)      => 'mealprefs_' + cleanUid(uid),
+  WORKOUT_HISTORY: (uid)  => 'workouthistory_' + cleanUid(uid),
+  ACTIVE_WORKOUT:  (uid)  => 'activeworkout_'  + cleanUid(uid),
+  BARCODE_CACHE:   ()     => 'barcodecache_v1',
 };

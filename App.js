@@ -20,6 +20,8 @@ import MealStudioScreen    from './screens/MealStudioScreen';
 import ARScreen            from './screens/ARScreen';
 import ProfileScreen       from './screens/ProfileScreen';
 import SettingsScreen      from './screens/SettingsScreen';
+import WorkoutSessionScreen from './screens/WorkoutSessionScreen';
+import BarcodeScanScreen   from './screens/BarcodeScanScreen';
 import BottomNav           from './components/BottomNav';
 import WebLayout           from './components/WebLayout';
 import SplashScreen        from './components/SplashScreen';
@@ -29,12 +31,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const ONBOARDING_KEY = 'greengain_onboarding_complete';
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 const LEGACY_ONBOARDING_KEY = 'fitlife_onboarding_complete';
-const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile', 'settings', 'progress', 'health', 'mealstudio'];
+const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile', 'settings', 'progress', 'health', 'mealstudio', 'workoutsession', 'barcode'];
 
 function App() {
   const { C } = useTheme();
   const s = makeStyles(C);
   const [screen, setScreen] = useState('loading');
+  const [screenParams, setScreenParams] = useState(null);
   const [user, setUser]     = useState(null);
   const [error, setError]   = useState(null);
 
@@ -77,7 +80,7 @@ function App() {
     init();
   }, []);
 
-  const navigate     = (to) => setScreen(to);
+  const navigate     = (to, params) => { setScreenParams(params || null); setScreen(to); };
   const handleLogout = ()   => { setUser(null); setScreen('welcome'); };
 
   const handleLogin = async (u) => {
@@ -151,6 +154,8 @@ function App() {
       case 'ar':      return <ARScreen />;
       case 'profile': return <ProfileScreen user={user} onLogout={handleLogout} onNavigate={navigate} />;
       case 'settings': return <SettingsScreen onNavigate={navigate} />;
+      case 'workoutsession': return <WorkoutSessionScreen user={user} params={screenParams} onNavigate={navigate} />;
+      case 'barcode':     return <BarcodeScanScreen user={user} onNavigate={navigate} />;
       default:        return null;
     }
   };

@@ -273,26 +273,35 @@ export default function MyPlanScreen({ user, onNavigate }) {
               </View>
 
               {!isRest && (
-                <View style={s.checkRow}>
+                <>
                   <TouchableOpacity
-                    style={[s.checkBtn, status === 'done' && s.checkBtnDone]}
-                    onPress={() => markSession(w.day, w.type, true)}
-                    activeOpacity={0.8}
+                    style={s.startBtn}
+                    onPress={() => onNavigate('workoutsession', { day: w.day })}
+                    activeOpacity={0.85}
                   >
-                    <Text style={[s.checkBtnText, status === 'done' && s.checkBtnTextDone]}>
-                      {status === 'done' ? '✓ Completed' : 'Mark Done'}
-                    </Text>
+                    <Text style={s.startBtnText}>▶  START WORKOUT</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[s.checkBtn, s.checkBtnSkip, status === 'skipped' && s.checkBtnSkippedActive]}
-                    onPress={() => markSession(w.day, w.type, false)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[s.checkBtnText, status === 'skipped' && s.checkBtnSkippedText]}>
-                      {status === 'skipped' ? '✗ Skipped' : 'Skip'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                  <View style={s.checkRow}>
+                    <TouchableOpacity
+                      style={[s.checkBtn, status === 'done' && s.checkBtnDone]}
+                      onPress={() => markSession(w.day, w.type, true)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[s.checkBtnText, status === 'done' && s.checkBtnTextDone]}>
+                        {status === 'done' ? '✓ Completed' : 'Mark Done'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.checkBtn, s.checkBtnSkip, status === 'skipped' && s.checkBtnSkippedActive]}
+                      onPress={() => markSession(w.day, w.type, false)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[s.checkBtnText, status === 'skipped' && s.checkBtnSkippedText]}>
+                        {status === 'skipped' ? '✗ Skipped' : 'Skip'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
               )}
 
               <View style={s.metaRow}>
@@ -495,6 +504,8 @@ const makeStyles = (C) => StyleSheet.create({
   todayCard: { borderColor: C.green, borderWidth: 1.5 },
   todayBadge: { backgroundColor: C.green, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginLeft: 8 },
   todayBadgeText: { color: C.bg, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  startBtn: { backgroundColor: C.green, paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginTop: 6, marginBottom: 8 },
+  startBtnText: { color: C.bg, fontWeight: '900', fontSize: 13, letterSpacing: 1.5 },
   checkRow: { flexDirection: 'row', marginTop: 4, marginBottom: 4 },
   checkBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', marginRight: 6, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
   checkBtnDone: { backgroundColor: C.green, borderColor: C.green },
