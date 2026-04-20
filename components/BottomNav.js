@@ -3,11 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-na
 import { C } from '../constants/theme';
 
 const TABS = [
-  { screen: 'home',    label: 'Home',    icon: '⌂' },
-  { screen: 'scanner', label: 'Scanner', icon: '◎' },
-  { screen: 'foodlog', label: 'Log',     icon: '☰' },
-  { screen: 'plan',    label: 'Plan',    icon: '◈' },
-  { screen: 'profile', label: 'Profile', icon: '◇' },
+  { screen: 'home',    label: 'Home',      icon: '🏠' },
+  { screen: 'plan',    label: 'Training',  icon: '🏋️' },
+  { screen: 'scanner', label: 'AI Scan',   icon: '📷', center: true },
+  { screen: 'foodlog', label: 'Nutrition', icon: '🍴' },
+  { screen: 'profile', label: 'Profile',   icon: '👤' },
 ];
 
 export default function BottomNav({ current, onNavigate }) {

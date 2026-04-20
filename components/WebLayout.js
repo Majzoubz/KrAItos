@@ -3,12 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { C } from '../constants/theme';
 
 const NAV_ITEMS = [
-  { screen: 'home',    label: 'Dashboard',    icon: '⌂' },
-  { screen: 'scanner', label: 'Food Scanner',  icon: '◎' },
-  { screen: 'foodlog', label: 'Food Log',      icon: '☰' },
-  { screen: 'tracker', label: 'Tracker',       icon: '◈' },
-  { screen: 'plan',    label: 'My Plan',       icon: '◇' },
-  { screen: 'profile', label: 'Profile',       icon: '●' },
+  { screen: 'home',    label: 'Home',      icon: '🏠' },
+  { screen: 'plan',    label: 'Training',  icon: '🏋️' },
+  { screen: 'scanner', label: 'AI Scan',   icon: '📷' },
+  { screen: 'foodlog', label: 'Nutrition', icon: '🍴' },
+  { screen: 'profile', label: 'Profile',   icon: '👤' },
 ];
 
 export default function WebLayout({ current, onNavigate, user, children }) {
