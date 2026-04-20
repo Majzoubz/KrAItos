@@ -134,7 +134,7 @@ export default function FoodLogScreen({ user, onNavigate }) {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
-        <Text style={s.titleBarText}>Food Log</Text>
+        <Text style={s.titleBarText}>Nutrition</Text>
         <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(!showAdd)}>
           <Text style={s.addBtnText}>{showAdd ? 'Cancel' : '+ Add'}</Text>
         </TouchableOpacity>
@@ -278,6 +278,39 @@ export default function FoodLogScreen({ user, onNavigate }) {
               <TouchableOpacity style={s.noPlanBanner} onPress={() => onNavigate('home')}>
                 <Text style={s.noPlanText}>No plan yet - targets are estimates. Tap to generate your plan.</Text>
               </TouchableOpacity>
+            )}
+
+            {/* Nutrition Plan (from AI plan) */}
+            {plan && Array.isArray(plan.mealPlan) && plan.mealPlan.length > 0 && (
+              <View style={s.planSection}>
+                <Text style={s.sectionTitle}>Your Nutrition Plan</Text>
+                {plan.mealPlan.map((m, i) => (
+                  <View key={i} style={s.planMealCard}>
+                    <View style={s.planMealHeader}>
+                      {m.time && (
+                        <View style={s.planMealTimeBadge}>
+                          <Text style={s.planMealTimeText}>{m.time}</Text>
+                        </View>
+                      )}
+                      <Text style={s.planMealName}>{m.meal}</Text>
+                      <Text style={s.planMealCal}>{m.calories} kcal</Text>
+                    </View>
+                    {(m.foods || []).map((f, j) => (
+                      <View key={j} style={s.planFoodRow}>
+                        <View style={s.planFoodDot} />
+                        <Text style={s.planFoodText}>{f}</Text>
+                      </View>
+                    ))}
+                    {(m.protein || m.carbs || m.fat) && (
+                      <View style={s.planMealMacros}>
+                        <Text style={s.planMealMacroText}>P: {m.protein || 0}g</Text>
+                        <Text style={s.planMealMacroText}>C: {m.carbs || 0}g</Text>
+                        <Text style={s.planMealMacroText}>F: {m.fat || 0}g</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
             )}
 
             {/* Meals list */}
@@ -451,6 +484,18 @@ const s = StyleSheet.create({
   macroBarFill: { height: '100%', borderRadius: 3 },
   noPlanBanner: { backgroundColor: C.orange + '18', borderRadius: 10, padding: 12, marginBottom: 12, borderLeftWidth: 3, borderLeftColor: C.orange },
   noPlanText: { color: C.orange, fontSize: 12, lineHeight: 18 },
+  planSection: { marginBottom: 16 },
+  planMealCard: { backgroundColor: C.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border },
+  planMealHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  planMealTimeBadge: { backgroundColor: C.greenGlow2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginRight: 10 },
+  planMealTimeText: { color: C.green, fontSize: 10, fontWeight: '700' },
+  planMealName: { color: C.white, fontWeight: '800', fontSize: 15, flex: 1 },
+  planMealCal: { color: C.green, fontWeight: '700', fontSize: 13 },
+  planFoodRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  planFoodDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.green, marginRight: 10 },
+  planFoodText: { color: C.mutedLight, fontSize: 13, flex: 1 },
+  planMealMacros: { flexDirection: 'row', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border },
+  planMealMacroText: { color: C.muted, fontSize: 11, fontWeight: '600', marginRight: 16 },
   emptyBox: { alignItems: 'center', paddingVertical: 40 },
   emptyTitle: { color: C.white, fontSize: 18, fontWeight: '900', marginBottom: 10 },
   emptyText: { color: C.muted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 20 },

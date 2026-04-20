@@ -16,6 +16,7 @@ import MyPlanScreen        from './screens/MyPlanScreen';
 import TrackerScreen       from './screens/TrackerScreen';
 import ARScreen            from './screens/ARScreen';
 import ProfileScreen       from './screens/ProfileScreen';
+import SettingsScreen      from './screens/SettingsScreen';
 import BottomNav           from './components/BottomNav';
 import WebLayout           from './components/WebLayout';
 
@@ -24,7 +25,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const ONBOARDING_KEY = 'greengain_onboarding_complete';
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 const LEGACY_ONBOARDING_KEY = 'fitlife_onboarding_complete';
-const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile'];
+const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile', 'settings'];
 
 function App() {
   const [screen, setScreen] = useState('loading');
@@ -137,6 +138,7 @@ function App() {
       case 'tracker': return <TrackerScreen user={user} />;
       case 'ar':      return <ARScreen />;
       case 'profile': return <ProfileScreen user={user} onLogout={handleLogout} onNavigate={navigate} />;
+      case 'settings': return <SettingsScreen onNavigate={navigate} />;
       default:        return null;
     }
   };

@@ -9,7 +9,6 @@ import { Storage, KEYS } from '../utils/storage';
 export default function MyPlanScreen({ user, onNavigate }) {
   const [plan, setPlan]       = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab]         = useState('nutrition');
 
   const loadPlan = useCallback(async () => {
     setLoading(true);
@@ -23,7 +22,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
   if (loading) {
     return (
       <SafeAreaView style={s.safe}>
-        <View style={s.titleBar}><Text style={s.titleBarText}>My Plan</Text></View>
+        <View style={s.titleBar}><Text style={s.titleBarText}>Training</Text></View>
         <View style={s.center}><ActivityIndicator color={C.green} size="large" /></View>
       </SafeAreaView>
     );
@@ -32,12 +31,12 @@ export default function MyPlanScreen({ user, onNavigate }) {
   if (!plan) {
     return (
       <SafeAreaView style={s.safe}>
-        <View style={s.titleBar}><Text style={s.titleBarText}>My Plan</Text></View>
+        <View style={s.titleBar}><Text style={s.titleBarText}>Training</Text></View>
         <View style={s.center}>
-          <View style={s.emptyIcon}><Text style={s.emptyIconText}>⚡</Text></View>
-          <Text style={s.emptyTitle}>No plan yet</Text>
+          <View style={s.emptyIcon}><Text style={s.emptyIconText}>🏋️</Text></View>
+          <Text style={s.emptyTitle}>No workout plan yet</Text>
           <Text style={s.emptyText}>
-            Head back to the Home screen — your plan will generate automatically from your sign-up answers.
+            Head back to the Home screen — your training split will generate automatically from your sign-up answers.
           </Text>
           <TouchableOpacity style={s.goBtn} onPress={() => onNavigate('home')}>
             <Text style={s.goBtnText}>Go to Home</Text>
@@ -51,151 +50,52 @@ export default function MyPlanScreen({ user, onNavigate }) {
     day: 'numeric', month: 'long', year: 'numeric',
   });
 
-  const TABS = [
-    { key: 'nutrition', label: 'Nutrition' },
-    { key: 'workout',   label: 'Workout'   },
-    { key: 'tips',      label: 'Tips'      },
-  ];
-
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
-        <Text style={s.titleBarText}>My Plan</Text>
+        <Text style={s.titleBarText}>Training</Text>
         <Text style={s.titleBarSub}>Last updated {generatedDate}</Text>
       </View>
 
-      <View style={s.tabRow}>
-        {TABS.map(t => (
-          <TouchableOpacity
-            key={t.key}
-            style={[s.tabBtn, tab === t.key && s.tabBtnActive]}
-            onPress={() => setTab(t.key)}
-          >
-            <Text style={[s.tabBtnText, tab === t.key && s.tabBtnTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       <ScrollView contentContainerStyle={s.scroll}>
+        {plan.userProfile && (
+          <View style={s.profileBadge}>
+            <Text style={s.profileBadgeLabel}>YOUR PROFILE</Text>
+            <Text style={s.profileBadgeText}>
+              {plan.userProfile?.goal} · {plan.userProfile?.weight}kg · {plan.userProfile?.height}cm · {plan.userProfile?.activity}
+            </Text>
+          </View>
+        )}
 
-        {tab === 'nutrition' && (
-          <>
-            {plan.summary && (
-              <View style={s.assessCard}>
-                <Text style={s.assessLabel}>ASSESSMENT</Text>
-                <Text style={s.assessText}>{plan.summary}</Text>
-                <View style={s.bmiRow}>
-                  <View style={s.bmiBox}>
-                    <Text style={s.bmiNum}>{plan.bmi || '--'}</Text>
-                    <Text style={s.bmiSub}>BMI</Text>
-                  </View>
-                  <Text style={s.bmiCat}>{plan.bmiCategory || ''}</Text>
-                </View>
+        <Text style={s.sectionTitle}>Your Workout Split</Text>
+
+        {(plan.workoutPlan || []).length === 0 && (
+          <Text style={s.emptyText}>No workout days in this plan.</Text>
+        )}
+
+        {(plan.workoutPlan || []).map((w, i) => (
+          <View key={i} style={s.workoutCard}>
+            <View style={s.workoutHeader}>
+              <Text style={s.workoutDay}>{w.day}</Text>
+              <View style={s.typeBadge}>
+                <Text style={s.typeText}>{w.type}</Text>
               </View>
-            )}
-
-            <View style={s.calorieBox}>
-              <Text style={s.calorieNum}>{plan.dailyCalories || '--'}</Text>
-              <Text style={s.calorieLabel}>CALORIES / DAY</Text>
             </View>
-
-            <View style={s.macroRow}>
-              {[
-                ['Protein', plan.protein, plan.proteinPct],
-                ['Carbs',   plan.carbs,   plan.carbsPct],
-                ['Fat',     plan.fat,     plan.fatPct],
-              ].map(([l, v, pct]) => (
-                <View key={l} style={s.macroItem}>
-                  <Text style={s.macroVal}>{v || '--'}<Text style={s.macroUnit}>g</Text></Text>
-                  <Text style={s.macroPct}>{pct || '--'}%</Text>
-                  <Text style={s.macroLabel}>{l}</Text>
-                </View>
-              ))}
-            </View>
-
-            <Text style={s.sectionTitle}>Daily Meal Plan</Text>
-            {(plan.mealPlan || []).map((m, i) => (
-              <View key={i} style={s.mealCard}>
-                <View style={s.mealHeader}>
-                  {m.time && (
-                    <View style={s.mealTimeBadge}>
-                      <Text style={s.mealTimeText}>{m.time}</Text>
-                    </View>
+            {w.duration && <Text style={s.durationLabel}>{w.duration}</Text>}
+            {(w.exercises || []).map((e, j) => {
+              const exObj = typeof e === 'string' ? { name: e } : e;
+              return (
+                <View key={j} style={s.exerciseRow}>
+                  <View style={s.exerciseDot} />
+                  <Text style={s.exerciseText}>{exObj.name}</Text>
+                  {exObj.sets && exObj.reps && (
+                    <Text style={s.exerciseDetail}>{exObj.sets}×{exObj.reps}</Text>
                   )}
-                  <Text style={s.mealName}>{m.meal}</Text>
-                  <Text style={s.mealCal}>{m.calories} kcal</Text>
                 </View>
-                {(m.foods || []).map((f, j) => (
-                  <View key={j} style={s.foodRow}>
-                    <View style={s.foodDot} />
-                    <Text style={s.foodText}>{f}</Text>
-                  </View>
-                ))}
-                {(m.protein || m.carbs || m.fat) && (
-                  <View style={s.mealMacros}>
-                    <Text style={s.mealMacroText}>P: {m.protein || 0}g</Text>
-                    <Text style={s.mealMacroText}>C: {m.carbs || 0}g</Text>
-                    <Text style={s.mealMacroText}>F: {m.fat || 0}g</Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </>
-        )}
-
-        {tab === 'workout' && (
-          <>
-            {plan.userProfile && (
-              <View style={s.profileBadge}>
-                <Text style={s.profileBadgeLabel}>YOUR PROFILE</Text>
-                <Text style={s.profileBadgeText}>
-                  {plan.userProfile?.goal} · {plan.userProfile?.weight}kg · {plan.userProfile?.height}cm · {plan.userProfile?.activity}
-                </Text>
-              </View>
-            )}
-            {(plan.workoutPlan || []).map((w, i) => (
-              <View key={i} style={s.workoutCard}>
-                <View style={s.workoutHeader}>
-                  <Text style={s.workoutDay}>{w.day}</Text>
-                  <View style={s.typeBadge}>
-                    <Text style={s.typeText}>{w.type}</Text>
-                  </View>
-                </View>
-                {w.duration && <Text style={s.durationLabel}>{w.duration}</Text>}
-                {(w.exercises || []).map((e, j) => {
-                  const exObj = typeof e === 'string' ? { name: e } : e;
-                  return (
-                    <View key={j} style={s.exerciseRow}>
-                      <View style={s.exerciseDot} />
-                      <Text style={s.exerciseText}>{exObj.name}</Text>
-                      {exObj.sets && exObj.reps && (
-                        <Text style={s.exerciseDetail}>{exObj.sets}×{exObj.reps}</Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            ))}
-          </>
-        )}
-
-        {tab === 'tips' && (
-          <>
-            {(plan.weeklyTips || []).length === 0 && (
-              <Text style={s.emptyText}>No tips available in this plan.</Text>
-            )}
-            {(plan.weeklyTips || []).map((t, i) => (
-              <View key={i} style={s.tipCard}>
-                <View style={s.tipNum}>
-                  <Text style={s.tipNumText}>{i + 1}</Text>
-                </View>
-                <Text style={s.tipText}>{t}</Text>
-              </View>
-            ))}
-          </>
-        )}
-
-
+              );
+            })}
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
