@@ -27,6 +27,7 @@ screens/
   MyPlanScreen.js   # Full plan view with nutrition/workout/tips tabs
   TrackerScreen.js  # Water & streak tracking
   ARScreen.js       # AR workout guide
+  HealthScreen.js   # Health & Activity: pedometer steps, manual HR/sleep/active min, weekly chart, provider cards (Apple Health/Google Fit/Garmin/Fitbit/Whoop) — real ones marked "needs dev build"
   ProfileScreen.js  # User profile (green-only accent)
 components/
   BottomNav.js      # Mobile bottom navigation
@@ -37,7 +38,8 @@ utils/
   firebase.js       # Firebase init & Firestore (env var based)
   auth.js           # Auth logic (custom hash + Firestore, not Firebase Auth SDK)
   api.js            # Groq AI integration (max_tokens: 4000)
-  planGenerator.js  # generatePlanFromOnboarding (initial) + adaptPlan (weekly check-in evolution)
+  planGenerator.js  # generatePlanFromOnboarding (initial) + adaptPlan (weekly check-in evolution; reads avg steps + sleep + resting HR from health module to re-tune calories when wearable data contradicts user's selected activity level)
+  health.js / health.impl.web.js / health.impl.native.js  # Cross-platform health data: pedometer (expo-sensors) on native, manual entry everywhere; AsyncStorage daily snapshots; getHealthSummary + stepsToActivityLevel
   planAdapter.js    # buildWeeklyContext (weight slope, calorie/protein adherence, session %),
                     # shouldAutoAdapt gating, logSession for workout adherence tracking
   storage.js        # Firestore data storage (KEYS includes ADHERENCE log)

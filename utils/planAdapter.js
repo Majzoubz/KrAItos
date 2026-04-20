@@ -1,4 +1,5 @@
 import { Storage, KEYS } from './storage';
+import { getHealthSummary, stepsToActivityLevel } from './health';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -103,6 +104,21 @@ export async function buildWeeklyContext(uid, plan) {
       sessionsPlannedPerWeek: totalSessionsPlanned,
       adherencePct,
     },
+    health: await (async () => {
+      try {
+        const h = await getHealthSummary(uid, 7);
+        return {
+          avgStepsLast7d:    h.avgSteps,
+          avgRestingHrLast7d: h.avgRestingHr,
+          avgSleepHrLast7d:  h.avgSleep,
+          avgActiveMinLast7d: h.avgActiveMin,
+          inferredActivityLevel: stepsToActivityLevel(h.avgSteps),
+          stepsSampleDays:   h.samples?.steps || 0,
+        };
+      } catch {
+        return { avgStepsLast7d: null, stepsSampleDays: 0 };
+      }
+    })(),
   };
 }
 
@@ -116,7 +132,8 @@ export function shouldAutoAdapt(plan, ctx) {
   const hasFood   = (ctx?.nutrition?.loggingDays || 0) >= 2;
   const hasWork   = (ctx?.workout?.sessionsCompletedLast7d || 0) +
                     (ctx?.workout?.sessionsSkippedLast7d  || 0) >= 1;
-  return hasWeight || hasFood || hasWork;
+  const hasHealth = (ctx?.health?.stepsSampleDays || 0) >= 3;
+  return hasWeight || hasFood || hasWork || hasHealth;
 }
 
 export async function logSession(uid, entry) {

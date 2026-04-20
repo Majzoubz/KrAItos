@@ -12,6 +12,7 @@ import { Auth } from '../utils/auth';
 import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
 import { scheduleMealReminders } from '../utils/notifications';
 import { buildWeeklyContext, shouldAutoAdapt } from '../utils/planAdapter';
+import { getHealthDay, syncTodaySteps, isStepCountingAvailable } from '../utils/health';
 
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
@@ -78,6 +79,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   const [generating, setGenerating]   = useState(false);
   const [genError, setGenError]       = useState(null);
   const [foodLog, setFoodLog]         = useState([]);
+  const [healthToday, setHealthToday] = useState(null);
   const [streak, setStreak]           = useState(user.streak || 0);
   const today                         = new Date();
   const [todayDate]                   = useState(today.toDateString());
@@ -122,7 +124,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   const tryAutoAdapt = useCallback(async (currentPlan) => {
     if (autoAdaptAttempted.current) return;
     try {
-      const ctx = await buildWeeklyContext(user.uid, currentPlan);
+      const ctx = await buildWeeklyContext(user.email || user.uid, currentPlan);
       if (!shouldAutoAdapt(currentPlan, ctx)) return;
       autoAdaptAttempted.current = true;
       let onboarding = currentPlan.userProfile || {};
@@ -136,11 +138,18 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   }, [user.uid, user.email]);
 
   const loadData = useCallback(async () => {
-    const [p, log] = await Promise.all([
+    const [p, log, hd, hAvail] = await Promise.all([
       Storage.get(KEYS.PLAN(user.email || user.uid)),
       Storage.get(KEYS.FOODLOG(user.uid, todayDate)),
+      getHealthDay(user.email || user.uid),
+      isStepCountingAvailable(),
     ]);
     setFoodLog(Array.isArray(log) ? log : []);
+    setHealthToday(hd);
+    if (hAvail) {
+      syncTodaySteps(user.email || user.uid)
+        .then((steps) => { if (steps != null) getHealthDay(user.email || user.uid).then(setHealthToday); });
+    }
     if (p) {
       setPlan(p);
       setLoadingPlan(false);
@@ -291,6 +300,28 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
                   </Ring>
                 </View>
               </View>
+
+              {/* Health quick-link */}
+              <TouchableOpacity
+                style={s.healthCard}
+                onPress={() => onNavigate('health')}
+                activeOpacity={0.85}
+              >
+                <View style={s.healthIconWrap}>
+                  <Text style={{ fontSize: 22 }}>👟</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.healthTitle}>
+                    {healthToday?.steps != null ? healthToday.steps.toLocaleString() : '—'} steps
+                  </Text>
+                  <Text style={s.healthSub}>
+                    {healthToday?.restingHr ? `${healthToday.restingHr} bpm resting · ` : ''}
+                    {healthToday?.sleepHr ? `${healthToday.sleepHr}h sleep · ` : ''}
+                    Tap to sync watch & health
+                  </Text>
+                </View>
+                <Text style={s.progressArrow}>→</Text>
+              </TouchableOpacity>
 
               {/* Progress quick-link */}
               <TouchableOpacity
@@ -446,6 +477,17 @@ const makeStyles = (C) => StyleSheet.create({
   progressTitle: { color: C.bg, fontSize: 15, fontWeight: '900', letterSpacing: 0.3 },
   progressSub:   { color: C.bg, fontSize: 11, opacity: 0.7, marginTop: 2 },
   progressArrow: { color: C.bg, fontSize: 22, fontWeight: '900', marginLeft: 8 },
+  healthCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: C.card,
+    borderRadius: 16, padding: 14, marginBottom: 12,
+    borderWidth: 1.5, borderColor: C.green + '40',
+  },
+  healthIconWrap: {
+    width: 44, height: 44, borderRadius: 12, backgroundColor: C.green + '22',
+    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+  },
+  healthTitle: { color: C.white, fontSize: 16, fontWeight: '900', letterSpacing: 0.2 },
+  healthSub:   { color: C.muted, fontSize: 11, marginTop: 2 },
 
   emptyLog: {
     backgroundColor: C.card, borderRadius: 20, padding: 28,

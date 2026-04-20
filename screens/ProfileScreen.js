@@ -33,6 +33,7 @@ export default function ProfileScreen({ user, onLogout, onNavigate }) {
   };
 
   const MENU = [
+    { label: 'Health & Activity', sub: 'Steps, heart rate, sleep, smart watch', screen: 'health' },
     { label: 'Settings',         sub: 'Language, theme, notifications',    screen: 'settings' },
     { label: 'AR Workout',       sub: 'Coming soon - glasses integration', screen: 'ar' },
     { label: 'Weight Tracker',   sub: 'Log and view your weight history',  screen: 'tracker' },

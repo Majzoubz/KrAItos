@@ -170,6 +170,23 @@ export async function adaptPlan(prevPlan, onboardingData, weeklyContext, userEma
     weeklyContext.workout.adherencePct !== null
       ? `Adherence: ${weeklyContext.workout.adherencePct}%`
       : '',
+    '',
+    '== Wearable / Health (last 7 days) ==',
+    weeklyContext.health?.avgStepsLast7d != null
+      ? `Average daily steps: ${weeklyContext.health.avgStepsLast7d} (${weeklyContext.health.stepsSampleDays} days of data)`
+      : 'Average daily steps: no data',
+    weeklyContext.health?.inferredActivityLevel
+      ? `Steps imply activity level: ${weeklyContext.health.inferredActivityLevel} (originally selected: ${onboardingData?.activityLevel || onboardingData?.activity || 'unspecified'})`
+      : '',
+    weeklyContext.health?.avgRestingHrLast7d != null
+      ? `Resting HR avg: ${weeklyContext.health.avgRestingHrLast7d} bpm`
+      : '',
+    weeklyContext.health?.avgSleepHrLast7d != null
+      ? `Sleep avg: ${weeklyContext.health.avgSleepHrLast7d} hr/night`
+      : '',
+    weeklyContext.health?.avgActiveMinLast7d != null
+      ? `Active minutes avg: ${weeklyContext.health.avgActiveMinLast7d} min/day`
+      : '',
   ].filter(Boolean).join('\n');
 
   const prevPlanSummary = JSON.stringify({
@@ -202,8 +219,12 @@ ADAPTATION RULES:
    - >=80%: progress (add ~2.5-5% load on main lifts, +1 set on lagging muscle group OR advance calisthenics progression).
    - 50-79%: hold volume, reinforce 1-2 priority sessions.
    - <50% with >=2 sessions/week planned: REDUCE planned sessions by 1 (consolidate into compounds), make it sustainable, note that adherence beats theoretical optimum.
-5. KEEP CONTINUITY: the trainingPhilosophy stays the same unless adherence collapsed; tweak loads/volume not the whole split. The user should recognize their plan.
-6. If logging is sparse (loggingDays<3 and sampleCount<2), keep plan unchanged but produce a friendly nudge in changesThisWeek.
+5. WEARABLE / STEPS:
+   - If avgStepsLast7d is provided AND it implies a different activity level than the user originally selected (e.g. selected "Sedentary" but averaging 11k steps, or selected "Very Active" but averaging 4k), TRUST THE DATA: re-estimate TDEE for the inferred level and adjust dailyCalories accordingly (typically ±150-300 kcal). Call this out in changesThisWeek.
+   - If resting HR is trending down with consistent training: positive cardio adaptation — congratulate.
+   - If sleep avg < 6.5 hr: surface a recovery tip and consider slightly reducing training volume (sleep gates recovery).
+6. KEEP CONTINUITY: the trainingPhilosophy stays the same unless adherence collapsed; tweak loads/volume not the whole split. The user should recognize their plan.
+7. If logging is sparse (loggingDays<3 and sampleCount<2), keep plan unchanged but produce a friendly nudge in changesThisWeek.
 
 Return ONLY valid JSON (no markdown, no extra text), the SAME schema as the original plan PLUS one new field "changesThisWeek". The mealPlan, workoutPlan, weeklyVolume, progressionNotes etc. should be the UPDATED versions reflecting the adaptations above.
 
