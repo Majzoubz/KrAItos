@@ -43,8 +43,8 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild \
-            -workspace ios/FitLife.xcworkspace \
-            -scheme FitLife \
+            -workspace ios/KrAItos.xcworkspace \
+            -scheme KrAItos \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath ios/build \
@@ -68,4 +68,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
-          path: FitLife.ipa
+          path: KrAItos.ipa
