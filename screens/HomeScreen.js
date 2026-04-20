@@ -5,6 +5,7 @@ import {
   ActivityIndicator, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { Path as SvgPath, Circle as SvgCircle } from 'react-native-svg';
 import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
 import { Auth } from '../utils/auth';
@@ -289,6 +290,37 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
                 </View>
               </View>
 
+              {/* Progress quick-link */}
+              <TouchableOpacity
+                style={s.progressCard}
+                onPress={() => onNavigate('progress')}
+                activeOpacity={0.85}
+              >
+                <View style={s.progressIconWrap}>
+                  <Svg width={28} height={28} viewBox="0 0 28 28">
+                    <SvgPath
+                      d="M3 22 L9 15 L14 19 L19 11 L25 16"
+                      stroke={C.bg}
+                      strokeWidth="2.5"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <SvgCircle cx="9" cy="15" r="1.8" fill={C.bg} />
+                    <SvgCircle cx="14" cy="19" r="1.8" fill={C.bg} />
+                    <SvgCircle cx="19" cy="11" r="1.8" fill={C.bg} />
+                    <SvgCircle cx="25" cy="16" r="1.8" fill={C.bg} />
+                  </Svg>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.progressTitle}>View Progress</Text>
+                  <Text style={s.progressSub}>
+                    Weight trend, calories, macros & adherence
+                  </Text>
+                </View>
+                <Text style={s.progressArrow}>→</Text>
+              </TouchableOpacity>
+
               {/* Recently logged */}
               <View style={s.sectionHeader}>
                 <Text style={s.sectionTitle}>Recently logged</Text>
@@ -407,6 +439,11 @@ const makeStyles = (C) => StyleSheet.create({
   },
   sectionTitle: { color: C.white, fontSize: 16, fontWeight: '800' },
   sectionLink:  { color: C.green, fontSize: 13, fontWeight: '700' },
+  progressCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.green, borderRadius: 16, padding: 14, marginBottom: 16 },
+  progressIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.bg + '22', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  progressTitle: { color: C.bg, fontSize: 15, fontWeight: '900', letterSpacing: 0.3 },
+  progressSub:   { color: C.bg, fontSize: 11, opacity: 0.7, marginTop: 2 },
+  progressArrow: { color: C.bg, fontSize: 22, fontWeight: '900', marginLeft: 8 },
 
   emptyLog: {
     backgroundColor: C.card, borderRadius: 20, padding: 28,

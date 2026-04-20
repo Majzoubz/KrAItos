@@ -125,11 +125,16 @@ User wants ${freqNum} training days/week. Honor it exactly.`;
       age,
       gender: data.gender,
       weight: weightKg,
+      startWeight: weightKg,
+      targetWeight: data.units === 'Imperial'
+        ? Math.round(parseFloat(data.targetWeight || 0) * 0.4536)
+        : parseFloat(data.targetWeight || 0) || null,
       height: heightCm,
       goal: data.goal,
       activity: data.activityLevel,
       diet: data.diet,
       exerciseType: data.exerciseType,
+      weeklyRate: data.weeklyRate,
     },
   };
 
