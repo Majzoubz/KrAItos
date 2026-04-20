@@ -10,6 +10,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS, subscribeSyncStatus } from '../utils/storage';
 import { OfflineBanner } from './../components/UI';
 import AdaptiveCoachingCard from '../components/AdaptiveCoachingCard';
+import ChangeLogCard from '../components/ChangeLogCard';
 import { Auth } from '../utils/auth';
 import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
 import { scheduleMealReminders } from '../utils/notifications';
@@ -251,6 +252,11 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
               plan={plan}
               onPlanUpdate={(updated) => setPlan(updated)}
             />
+          )}
+
+          {/* Last adaptation change log (only when meaningful) */}
+          {plan && Array.isArray(plan.adaptationLog) && plan.adaptationLog.length > 0 && (
+            <ChangeLogCard lastChange={plan.adaptationLog[0]} />
           )}
 
           {/* Weekly review banner */}

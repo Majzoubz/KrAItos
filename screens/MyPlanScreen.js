@@ -139,40 +139,6 @@ export default function MyPlanScreen({ user, onNavigate }) {
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
-        {lastChange && (
-          <View style={s.changeCard}>
-            <Text style={s.changeLabel}>WHAT CHANGED LAST UPDATE</Text>
-            {lastChange.summary ? (
-              <Text style={s.changeSummary}>{lastChange.summary}</Text>
-            ) : null}
-            {Array.isArray(lastChange.adjustments) && lastChange.adjustments.map((a, i) => (
-              <View key={i} style={s.adjRow}>
-                <Text style={s.adjArea}>{a.area}</Text>
-                <Text style={s.adjBeforeAfter}>
-                  {a.before} <Text style={s.adjArrow}>→</Text> {a.after}
-                </Text>
-                {a.why ? <Text style={s.adjWhy}>{a.why}</Text> : null}
-              </View>
-            ))}
-            {Array.isArray(lastChange.wins) && lastChange.wins.length > 0 && (
-              <View style={s.changeSubBlock}>
-                <Text style={s.changeSubLabel}>WINS</Text>
-                {lastChange.wins.map((w, i) => (
-                  <Text key={i} style={s.changeBullet}>✓ {w}</Text>
-                ))}
-              </View>
-            )}
-            {Array.isArray(lastChange.focusNextWeek) && lastChange.focusNextWeek.length > 0 && (
-              <View style={s.changeSubBlock}>
-                <Text style={s.changeSubLabel}>FOCUS NEXT WEEK</Text>
-                {lastChange.focusNextWeek.map((f, i) => (
-                  <Text key={i} style={s.changeBullet}>→ {f}</Text>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-
         {plan.userProfile && (
           <View style={s.profileBadge}>
             <Text style={s.profileBadgeLabel}>YOUR PROFILE</Text>
