@@ -22,6 +22,7 @@ import { getHealthDay, syncTodaySteps, isStepCountingAvailable } from '../utils/
 import TodayScoreCard from '../components/TodayScoreCard';
 import QuickLogSheet from '../components/QuickLogSheet';
 import { getLatestReview, isReviewDue } from '../utils/weeklyReview';
+import BrandName from '../components/BrandName';
 
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
@@ -217,7 +218,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
 
         <View style={s.topBar}>
           <View style={{ flex: 1 }}>
-            <Text style={s.brandName}>KrAItos</Text>
+            <BrandName style={s.brandName} />
             <Text style={s.dateText}>{todayFormatted}</Text>
           </View>
           <View style={s.streakBadge}>

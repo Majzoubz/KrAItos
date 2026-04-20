@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Auth } from '../utils/auth';
+import BrandName from '../components/BrandName';
 
 export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
   const { C } = useTheme();
@@ -75,7 +76,9 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
                 {mode === 'signup' ? 'Create your account' : 'Welcome back'}
               </Text>
               <Text style={s.subheading}>
-                {mode === 'signup' ? 'Join KrAItos to start your transformation' : 'Log in to continue your journey'}
+                {mode === 'signup' ? (
+                  <>Join <BrandName /> to start your transformation</>
+                ) : 'Log in to continue your journey'}
               </Text>
             </View>
 

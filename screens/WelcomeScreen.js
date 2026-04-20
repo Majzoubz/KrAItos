@@ -3,6 +3,7 @@ import {
   StyleSheet, Text, View, TouchableOpacity, Animated, Platform, Image,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import BrandName from '../components/BrandName';
 export default function WelcomeScreen({ onStart }) {
   const { C } = useTheme();
   const s = makeStyles(C);
@@ -46,7 +47,7 @@ export default function WelcomeScreen({ onStart }) {
           <Image source={require('../assets/logo.png')} style={s.logoImage} resizeMode="contain" />
         </Animated.View>
 
-        <Text style={s.brand}>KrAItos</Text>
+        <BrandName style={s.brand} />
         <Text style={s.tagline}>YOUR AI FITNESS COACH</Text>
 
         <View style={s.divider} />

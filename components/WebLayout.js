@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import BrandName from './BrandName';
 const NAV_ITEMS = [
   { screen: 'home',    label: 'Home',      icon: '🏠' },
   { screen: 'plan',    label: 'Training',  icon: '🏋️' },
@@ -18,7 +19,7 @@ export default function WebLayout({ current, onNavigate, user, children }) {
         <View style={s.logo}>
           <Image source={require('../assets/logo.png')} style={s.logoImg} resizeMode="contain" />
           <View>
-            <Text style={s.logoName}>KrAItos</Text>
+            <BrandName style={s.logoName} />
             <Text style={s.logoSub}>AI FITNESS</Text>
           </View>
         </View>

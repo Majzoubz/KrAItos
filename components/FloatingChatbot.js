@@ -6,6 +6,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { callGemini, isGeminiAvailable } from '../utils/gemini';
 import { buildUserContext } from '../utils/userContext';
+import BrandName from './BrandName';
 
 const SUGGESTIONS = [
   'What should I eat for dinner tonight?',
@@ -129,7 +130,7 @@ export default function FloatingChatbot({ user }) {
                 <View style={s.headerLeft}>
                   <Image source={require('../assets/logo.png')} style={s.headerLogo} resizeMode="contain" />
                   <View>
-                    <Text style={s.headerTitle}>KrAItos</Text>
+                    <BrandName style={s.headerTitle} />
                     <Text style={s.headerSub}>Your personal coach · powered by Gemini</Text>
                   </View>
                 </View>
