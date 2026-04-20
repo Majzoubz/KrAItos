@@ -458,6 +458,22 @@ export default function ProgressScreen({ user, onNavigate }) {
           </View>
         )}
 
+        <TouchableOpacity
+          style={[s.backBtn, { backgroundColor: C.green, borderColor: C.green, marginBottom: 10 }]}
+          onPress={() => onNavigate('measurements')}
+          activeOpacity={0.85}
+        >
+          <Text style={[s.backBtnText, { color: C.bg, fontWeight: '900' }]}>📏 Body Measurements & Photos →</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[s.backBtn, { backgroundColor: C.card, borderColor: C.green + '50', marginBottom: 10 }]}
+          onPress={() => onNavigate('weeklyreview')}
+          activeOpacity={0.85}
+        >
+          <Text style={[s.backBtnText, { color: C.green, fontWeight: '900' }]}>🧠 Weekly Coach Review →</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={s.backBtn} onPress={() => onNavigate('home')} activeOpacity={0.85}>
           <Text style={s.backBtnText}>← Back to Home</Text>
         </TouchableOpacity>

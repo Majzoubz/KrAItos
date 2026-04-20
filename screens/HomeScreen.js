@@ -13,6 +13,9 @@ import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
 import { scheduleMealReminders } from '../utils/notifications';
 import { buildWeeklyContext, shouldAutoAdapt } from '../utils/planAdapter';
 import { getHealthDay, syncTodaySteps, isStepCountingAvailable } from '../utils/health';
+import TodayScoreCard from '../components/TodayScoreCard';
+import QuickLogSheet from '../components/QuickLogSheet';
+import { getLatestReview, isReviewDue } from '../utils/weeklyReview';
 
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
@@ -81,6 +84,8 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   const [foodLog, setFoodLog]         = useState([]);
   const [healthToday, setHealthToday] = useState(null);
   const [streak, setStreak]           = useState(user.streak || 0);
+  const [latestReview, setLatestReview] = useState(null);
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
   const today                         = new Date();
   const [todayDate]                   = useState(today.toDateString());
   const fadeAnim                      = useRef(new Animated.Value(0)).current;
@@ -138,14 +143,16 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   }, [user.uid, user.email]);
 
   const loadData = useCallback(async () => {
-    const [p, log, hd, hAvail] = await Promise.all([
+    const [p, log, hd, hAvail, rev] = await Promise.all([
       Storage.get(KEYS.PLAN(user.email || user.uid)),
       Storage.get(KEYS.FOODLOG(user.uid, todayDate)),
       getHealthDay(user.email || user.uid),
       isStepCountingAvailable(),
+      getLatestReview(user.email || user.uid),
     ]);
     setFoodLog(Array.isArray(log) ? log : []);
     setHealthToday(hd);
+    setLatestReview(rev);
     if (hAvail) {
       syncTodaySteps(user.email || user.uid)
         .then((steps) => { if (steps != null) getHealthDay(user.email || user.uid).then(setHealthToday); });
@@ -216,6 +223,40 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
         <DateStrip selectedIdx={6} onSelect={() => {}} today={today} />
 
         <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+
+          {/* Today's Score + 7-day streak ring */}
+          {plan && (
+            <View style={{ marginHorizontal: -16 }}>
+              <TodayScoreCard
+                uid={user.uid}
+                healthUid={user.email || user.uid}
+                plan={plan}
+                foodLog={foodLog}
+                healthToday={healthToday}
+                onPress={() => onNavigate('progress')}
+              />
+            </View>
+          )}
+
+          {/* Weekly review banner */}
+          {plan && (latestReview || isReviewDue(latestReview)) && (
+            <TouchableOpacity
+              style={s.reviewBanner}
+              onPress={() => onNavigate('weeklyreview')}
+              activeOpacity={0.85}
+            >
+              <View style={s.reviewIconWrap}><Text style={s.reviewIcon}>🧠</Text></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.reviewTitle}>
+                  {latestReview && !latestReview.seen ? 'New weekly coach review' : (latestReview ? 'Weekly coach review' : 'Your week is ready to review')}
+                </Text>
+                <Text style={s.reviewSub} numberOfLines={1}>
+                  {latestReview?.title || 'Get a personalized recap and adjustments for next week'}
+                </Text>
+              </View>
+              <Text style={s.reviewArrow}>→</Text>
+            </TouchableOpacity>
+          )}
 
           {loadingPlan ? (
             <View style={s.loadingWrap}>
@@ -388,14 +429,27 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
                 ))
               )}
 
-              <TouchableOpacity style={s.addBtn} onPress={() => onNavigate('scanner')} activeOpacity={0.85}>
-                <Text style={s.addBtnIcon}>+</Text>
-                <Text style={s.addBtnText}>Add food</Text>
-              </TouchableOpacity>
+              <View style={s.addRow}>
+                <TouchableOpacity style={[s.addBtn, { flex: 1 }]} onPress={() => onNavigate('scanner')} activeOpacity={0.85}>
+                  <Text style={s.addBtnIcon}>+</Text>
+                  <Text style={s.addBtnText}>Add food</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.quickBtn} onPress={() => setQuickLogOpen(true)} activeOpacity={0.85}>
+                  <Text style={s.quickBtnIcon}>⚡</Text>
+                  <Text style={s.quickBtnText}>Quick Log</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
 
         </ScrollView>
+
+        <QuickLogSheet
+          visible={quickLogOpen}
+          onClose={() => setQuickLogOpen(false)}
+          uid={user.uid}
+          onLogged={loadData}
+        />
       </Animated.View>
     </SafeAreaView>
   );
@@ -531,4 +585,25 @@ const makeStyles = (C) => StyleSheet.create({
   emptyDesc: { color: C.muted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 28, maxWidth: 300 },
   emptyBtn: { backgroundColor: C.green, paddingVertical: 16, paddingHorizontal: 44, borderRadius: 16 },
   emptyBtnText: { color: C.bg, fontSize: 15, fontWeight: '900' },
+
+  reviewBanner: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card, borderRadius: 16, padding: 12,
+    marginTop: 12, marginBottom: 4,
+    borderWidth: 1, borderColor: C.green + '50',
+  },
+  reviewIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.green + '22', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  reviewIcon: { fontSize: 20 },
+  reviewTitle: { color: C.white, fontSize: 13, fontWeight: '900' },
+  reviewSub: { color: C.muted, fontSize: 11, marginTop: 2 },
+  reviewArrow: { color: C.green, fontSize: 22, fontWeight: '900', marginLeft: 6 },
+
+  addRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  quickBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 16, paddingHorizontal: 18, borderRadius: 18,
+    backgroundColor: C.card, borderWidth: 1.5, borderColor: C.green,
+  },
+  quickBtnIcon: { fontSize: 16, marginRight: 6 },
+  quickBtnText: { color: C.green, fontSize: 14, fontWeight: '900' },
 });
