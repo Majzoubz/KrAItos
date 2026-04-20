@@ -231,6 +231,53 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
 
           {syncQueued > 0 && <OfflineBanner queued={syncQueued} />}
 
+          {/* Hero calories card + macros (FIRST) */}
+          {plan && !loadingPlan && (
+            <>
+              <View style={s.heroCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.heroNum}>{remaining}</Text>
+                  <Text style={s.heroLabel}>Calories left</Text>
+                  <View style={s.heroSubRow}>
+                    <Text style={s.heroSubText}>
+                      <Text style={{ color: C.white, fontWeight: '700' }}>{consumed}</Text>
+                      <Text style={{ color: C.muted }}> eaten · </Text>
+                      <Text style={{ color: C.white, fontWeight: '700' }}>{target}</Text>
+                      <Text style={{ color: C.muted }}> goal</Text>
+                    </Text>
+                  </View>
+                </View>
+                <Ring size={100} stroke={10} pct={calPct} color={C.green}>
+                  <Text style={s.ringIcon}>🔥</Text>
+                </Ring>
+              </View>
+
+              <View style={s.macroRow}>
+                <View style={s.macroCard}>
+                  <Text style={s.macroNum}>{proteinLeft}g</Text>
+                  <Text style={s.macroLabel}>Protein left</Text>
+                  <Ring size={48} stroke={5} pct={proteinTarget > 0 ? proteinConsumed / proteinTarget : 0} color={C.green}>
+                    <Text style={s.macroIcon}>🥩</Text>
+                  </Ring>
+                </View>
+                <View style={s.macroCard}>
+                  <Text style={s.macroNum}>{carbsLeft}g</Text>
+                  <Text style={s.macroLabel}>Carbs left</Text>
+                  <Ring size={48} stroke={5} pct={carbsTarget > 0 ? carbsConsumed / carbsTarget : 0} color={C.green}>
+                    <Text style={s.macroIcon}>🍞</Text>
+                  </Ring>
+                </View>
+                <View style={s.macroCard}>
+                  <Text style={s.macroNum}>{fatLeft}g</Text>
+                  <Text style={s.macroLabel}>Fats left</Text>
+                  <Ring size={48} stroke={5} pct={fatTarget > 0 ? fatConsumed / fatTarget : 0} color={C.green}>
+                    <Text style={s.macroIcon}>🥑</Text>
+                  </Ring>
+                </View>
+              </View>
+            </>
+          )}
+
           {/* Today's Score + 7-day streak ring */}
           {plan && (
             <View style={{ marginHorizontal: -16 }}>
@@ -319,50 +366,6 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
             </View>
           ) : (
             <>
-              {/* Hero calories card */}
-              <View style={s.heroCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.heroNum}>{remaining}</Text>
-                  <Text style={s.heroLabel}>Calories left</Text>
-                  <View style={s.heroSubRow}>
-                    <Text style={s.heroSubText}>
-                      <Text style={{ color: C.white, fontWeight: '700' }}>{consumed}</Text>
-                      <Text style={{ color: C.muted }}> eaten · </Text>
-                      <Text style={{ color: C.white, fontWeight: '700' }}>{target}</Text>
-                      <Text style={{ color: C.muted }}> goal</Text>
-                    </Text>
-                  </View>
-                </View>
-                <Ring size={100} stroke={10} pct={calPct} color={C.green}>
-                  <Text style={s.ringIcon}>🔥</Text>
-                </Ring>
-              </View>
-
-              {/* Macro cards row */}
-              <View style={s.macroRow}>
-                <View style={s.macroCard}>
-                  <Text style={s.macroNum}>{proteinLeft}g</Text>
-                  <Text style={s.macroLabel}>Protein left</Text>
-                  <Ring size={48} stroke={5} pct={proteinTarget > 0 ? proteinConsumed / proteinTarget : 0} color={C.green}>
-                    <Text style={s.macroIcon}>🥩</Text>
-                  </Ring>
-                </View>
-                <View style={s.macroCard}>
-                  <Text style={s.macroNum}>{carbsLeft}g</Text>
-                  <Text style={s.macroLabel}>Carbs left</Text>
-                  <Ring size={48} stroke={5} pct={carbsTarget > 0 ? carbsConsumed / carbsTarget : 0} color={C.green}>
-                    <Text style={s.macroIcon}>🍞</Text>
-                  </Ring>
-                </View>
-                <View style={s.macroCard}>
-                  <Text style={s.macroNum}>{fatLeft}g</Text>
-                  <Text style={s.macroLabel}>Fats left</Text>
-                  <Ring size={48} stroke={5} pct={fatTarget > 0 ? fatConsumed / fatTarget : 0} color={C.green}>
-                    <Text style={s.macroIcon}>🥑</Text>
-                  </Ring>
-                </View>
-              </View>
-
               {/* Health quick-link */}
               <TouchableOpacity
                 style={s.healthCard}
