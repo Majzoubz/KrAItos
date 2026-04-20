@@ -32,6 +32,7 @@ import BottomNav           from './components/BottomNav';
 import WebLayout           from './components/WebLayout';
 import SplashScreen        from './components/SplashScreen';
 import ScreenTransition    from './components/ScreenTransition';
+import FloatingChatbot     from './components/FloatingChatbot';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -181,6 +182,7 @@ function App() {
     return (
       <WebLayout current={screen} onNavigate={navigate} user={user}>
         <ScreenTransition screenKey={screen}>{renderScreen()}</ScreenTransition>
+        {screen !== 'coach' && <FloatingChatbot user={user} />}
       </WebLayout>
     );
   }
@@ -191,6 +193,7 @@ function App() {
         <ScreenTransition screenKey={screen}>{renderScreen()}</ScreenTransition>
       </View>
       {isAuthed && <BottomNav current={screen} onNavigate={navigate} />}
+      {isAuthed && screen !== 'coach' && <FloatingChatbot user={user} />}
     </View>
   );
 }
