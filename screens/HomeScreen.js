@@ -170,7 +170,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
 
         <View style={s.topBar}>
           <View style={{ flex: 1 }}>
-            <Text style={s.brandName}>GreenGain</Text>
+            <Text style={s.brandName}>KrAItos</Text>
             <Text style={s.dateText}>{todayFormatted}</Text>
           </View>
           <View style={s.streakBadge}>

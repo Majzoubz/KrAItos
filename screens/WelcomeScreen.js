@@ -46,7 +46,7 @@ export default function WelcomeScreen({ onStart }) {
           <Image source={require('../assets/logo.png')} style={s.logoImage} resizeMode="contain" />
         </Animated.View>
 
-        <Text style={s.brand}>GreenGain</Text>
+        <Text style={s.brand}>KrAItos</Text>
         <Text style={s.tagline}>YOUR AI FITNESS COACH</Text>
 
         <View style={s.divider} />

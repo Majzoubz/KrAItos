@@ -75,7 +75,7 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
                 {mode === 'signup' ? 'Create your account' : 'Welcome back'}
               </Text>
               <Text style={s.subheading}>
-                {mode === 'signup' ? 'Join GreenGain to start your transformation' : 'Log in to continue your journey'}
+                {mode === 'signup' ? 'Join KrAItos to start your transformation' : 'Log in to continue your journey'}
               </Text>
             </View>
 

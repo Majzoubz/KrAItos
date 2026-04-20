@@ -18,7 +18,7 @@ export default function WebLayout({ current, onNavigate, user, children }) {
         <View style={s.logo}>
           <Image source={require('../assets/logo.png')} style={s.logoImg} resizeMode="contain" />
           <View>
-            <Text style={s.logoName}>GreenGain</Text>
+            <Text style={s.logoName}>KrAItos</Text>
             <Text style={s.logoSub}>AI FITNESS</Text>
           </View>
         </View>

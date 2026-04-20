@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "GreenGain",
+    "name": "KrAItos",
     "slug": "greengain",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,9 +12,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.greengain.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "GreenGain uses the camera to scan your meal and analyze its nutritional content.",
-        "NSPhotoLibraryUsageDescription": "GreenGain accesses your photo library so you can pick a meal photo for analysis.",
-        "NSPhotoLibraryAddUsageDescription": "GreenGain saves meal photos to your library."
+        "NSCameraUsageDescription": "KrAItos uses the camera to scan your meal and analyze its nutritional content.",
+        "NSPhotoLibraryUsageDescription": "KrAItos accesses your photo library so you can pick a meal photo for analysis.",
+        "NSPhotoLibraryAddUsageDescription": "KrAItos saves meal photos to your library."
       }
     },
     "android": {

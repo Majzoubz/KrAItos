@@ -1,7 +1,7 @@
-# GreenGain - AI-Powered Fitness & Nutrition App
+# KrAItos - AI-Powered Fitness & Nutrition App
 
 ## Overview
-GreenGain is a React Native / Expo fitness application that runs on web via `react-native-web`. It provides AI-powered nutrition coaching, food scanning, workout planning, and progress tracking. Inspired by MacroFactor and Cal AI.
+KrAItos is a React Native / Expo fitness application that runs on web via `react-native-web`. It provides AI-powered nutrition coaching, food scanning, workout planning, and progress tracking. Inspired by MacroFactor and Cal AI.
 
 ## Tech Stack
 - **Framework**: React Native with Expo SDK 54

@@ -123,7 +123,7 @@ function App() {
           <View style={s.loading}>
             <View style={s.splashGlow} />
             <Image source={require('./assets/logo.png')} style={s.splashLogo} resizeMode="contain" />
-            <Text style={s.splashName}>GreenGain</Text>
+            <Text style={s.splashName}>KrAItos</Text>
             <ActivityIndicator color={C.green} size="large" style={{ marginTop: 32 }} />
           </View>
         );
