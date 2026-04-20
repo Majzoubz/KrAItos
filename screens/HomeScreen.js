@@ -8,7 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
 import { Auth } from '../utils/auth';
-import { generatePlanFromOnboarding } from '../utils/planGenerator';
+import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
+import { buildWeeklyContext, shouldAutoAdapt } from '../utils/planAdapter';
 
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
@@ -115,6 +116,23 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
     return null;
   }, [user.uid, user.email]);
 
+  const autoAdaptAttempted = useRef(false);
+  const tryAutoAdapt = useCallback(async (currentPlan) => {
+    if (autoAdaptAttempted.current) return;
+    try {
+      const ctx = await buildWeeklyContext(user.uid, currentPlan);
+      if (!shouldAutoAdapt(currentPlan, ctx)) return;
+      autoAdaptAttempted.current = true;
+      let onboarding = currentPlan.userProfile || {};
+      try {
+        const raw = await AsyncStorage.getItem(ONBOARDING_DATA_KEY);
+        if (raw) onboarding = JSON.parse(raw);
+      } catch {}
+      const updated = await adaptPlan(currentPlan, onboarding, ctx, user.email || user.uid);
+      if (updated) setPlan(updated);
+    } catch {}
+  }, [user.uid, user.email]);
+
   const loadData = useCallback(async () => {
     const [p, log] = await Promise.all([
       Storage.get(KEYS.PLAN(user.email || user.uid)),
@@ -124,11 +142,12 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
     if (p) {
       setPlan(p);
       setLoadingPlan(false);
+      tryAutoAdapt(p);
     } else {
       setLoadingPlan(false);
       tryAutoGenerate();
     }
-  }, [user.uid, user.email, todayDate, tryAutoGenerate]);
+  }, [user.uid, user.email, todayDate, tryAutoGenerate, tryAutoAdapt]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();

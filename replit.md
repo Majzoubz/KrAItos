@@ -37,8 +37,10 @@ utils/
   firebase.js       # Firebase init & Firestore (env var based)
   auth.js           # Auth logic (custom hash + Firestore, not Firebase Auth SDK)
   api.js            # Groq AI integration (max_tokens: 4000)
-  planGenerator.js  # Generates complete AI plan from 19 onboarding data points
-  storage.js        # Firestore data storage
+  planGenerator.js  # generatePlanFromOnboarding (initial) + adaptPlan (weekly check-in evolution)
+  planAdapter.js    # buildWeeklyContext (weight slope, calorie/protein adherence, session %),
+                    # shouldAutoAdapt gating, logSession for workout adherence tracking
+  storage.js        # Firestore data storage (KEYS includes ADHERENCE log)
   platform.js       # Platform detection helpers
 constants/
   theme.js          # Color palette & design tokens (lime green #7FFF00)

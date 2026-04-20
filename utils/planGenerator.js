@@ -137,6 +137,109 @@ User wants ${freqNum} training days/week. Honor it exactly.`;
   return planData;
 }
 
+export async function adaptPlan(prevPlan, onboardingData, weeklyContext, userEmail) {
+  if (!prevPlan) return null;
+
+  const ctxLines = [
+    `Days since last update: ${weeklyContext.daysSinceLastAdapt ?? 'unknown'}`,
+    `Goal: ${onboardingData?.goal || 'unspecified'} | Target weekly rate: ${onboardingData?.weeklyRate || 'unspecified'}`,
+    '',
+    '== Weight (last 7 days) ==',
+    `Earliest: ${weeklyContext.weight.earliest ?? 'n/a'} kg`,
+    `Latest:   ${weeklyContext.weight.latest ?? 'n/a'} kg`,
+    `Observed weekly trend: ${weeklyContext.weight.observedKgPerWeek} kg/week (sample size ${weeklyContext.weight.sampleCount})`,
+    '',
+    '== Nutrition (last 7 days) ==',
+    `Target calories (current plan): ${weeklyContext.nutrition.targetCalories ?? 'n/a'}`,
+    `Average actual calories:        ${weeklyContext.nutrition.avgCaloriesLast7d ?? 'n/a'}`,
+    `Average actual protein:         ${weeklyContext.nutrition.avgProteinLast7d ?? 'n/a'} g`,
+    `Days the user actually logged:  ${weeklyContext.nutrition.loggingDays}/7`,
+    weeklyContext.nutrition.calorieDeltaVsTarget !== null
+      ? `Calorie drift vs target: ${weeklyContext.nutrition.calorieDeltaVsTarget > 0 ? '+' : ''}${weeklyContext.nutrition.calorieDeltaVsTarget} kcal/day`
+      : '',
+    '',
+    '== Workout adherence (last 7 days) ==',
+    `Sessions completed: ${weeklyContext.workout.sessionsCompletedLast7d}`,
+    `Sessions skipped:   ${weeklyContext.workout.sessionsSkippedLast7d}`,
+    `Sessions planned/week: ${weeklyContext.workout.sessionsPlannedPerWeek}`,
+    weeklyContext.workout.adherencePct !== null
+      ? `Adherence: ${weeklyContext.workout.adherencePct}%`
+      : '',
+  ].filter(Boolean).join('\n');
+
+  const prevPlanSummary = JSON.stringify({
+    dailyCalories: prevPlan.dailyCalories,
+    protein: prevPlan.protein,
+    carbs: prevPlan.carbs,
+    fat: prevPlan.fat,
+    proteinPct: prevPlan.proteinPct,
+    carbsPct: prevPlan.carbsPct,
+    fatPct: prevPlan.fatPct,
+    trainingPhilosophy: prevPlan.trainingPhilosophy,
+    weeklyVolume: prevPlan.weeklyVolume,
+    workoutPlan: prevPlan.workoutPlan,
+    progressionNotes: prevPlan.progressionNotes,
+  });
+
+  const systemPrompt = `You are an elite S&C coach + RD nutritionist conducting a WEEKLY CHECK-IN with a client. You have the previous plan and this week's actual data (weight trend, calorie/protein adherence, workout adherence). Apply evidence-based adaptive coaching:
+
+ADAPTATION RULES:
+1. WEIGHT TREND VS GOAL:
+   - If observed weekly rate is within ±25% of target: hold calories steady, congratulate.
+   - If progress is too slow (<75% of target rate): for fat loss reduce calories 100-200/day; for muscle gain add 100-200/day.
+   - If progress is too fast (>125% of target rate, especially for muscle gain or aggressive cuts): pull back 100-200/day to protect lean mass / health.
+   - If observedKgPerWeek conflicts with calorie adherence (e.g., user lost weight but ate above target), trust the SCALE — TDEE is higher than estimated.
+2. CALORIE ADHERENCE:
+   - If user consistently undereats target by >300 kcal: lower the prescribed target to a realistic number they will actually hit (sustainability > theoretical optimum).
+   - If user consistently overshoots by >200 kcal AND results stalled: keep target, add an accountability tip.
+3. PROTEIN: if avg protein < 0.8x prescribed, surface a focused tip; do not punish, suggest practical sources.
+4. WORKOUT ADHERENCE:
+   - >=80%: progress (add ~2.5-5% load on main lifts, +1 set on lagging muscle group OR advance calisthenics progression).
+   - 50-79%: hold volume, reinforce 1-2 priority sessions.
+   - <50% with >=2 sessions/week planned: REDUCE planned sessions by 1 (consolidate into compounds), make it sustainable, note that adherence beats theoretical optimum.
+5. KEEP CONTINUITY: the trainingPhilosophy stays the same unless adherence collapsed; tweak loads/volume not the whole split. The user should recognize their plan.
+6. If logging is sparse (loggingDays<3 and sampleCount<2), keep plan unchanged but produce a friendly nudge in changesThisWeek.
+
+Return ONLY valid JSON (no markdown, no extra text), the SAME schema as the original plan PLUS one new field "changesThisWeek". The mealPlan, workoutPlan, weeklyVolume, progressionNotes etc. should be the UPDATED versions reflecting the adaptations above.
+
+ADDITIONAL FIELD:
+"changesThisWeek": {
+  "summary": "2-3 sentences plain-English: how the user did this week and what you adjusted",
+  "adjustments": [
+    {"area": "Calories" | "Macros" | "Training Volume" | "Training Frequency" | "Exercise Selection" | "Recovery", "before": "old value", "after": "new value", "why": "1 sentence reasoning citing the data"}
+  ],
+  "wins": ["1-3 short positives observed"],
+  "focusNextWeek": ["1-3 short priorities"]
+}
+
+If literally nothing needs to change, still return the full plan unchanged with changesThisWeek explaining why (e.g., insufficient data, on-track).`;
+
+  const userMsg = `=== PREVIOUS PLAN ===\n${prevPlanSummary}\n\n=== THIS WEEK'S ACTUAL DATA ===\n${ctxLines}\n\nProduce the updated plan now.`;
+
+  const raw = await callAI(systemPrompt, userMsg);
+  const parsed = parseJSON(raw, null);
+  if (!parsed || !parsed.dailyCalories) return null;
+
+  const adaptationLog = Array.isArray(prevPlan.adaptationLog) ? prevPlan.adaptationLog : [];
+  if (parsed.changesThisWeek) {
+    adaptationLog.unshift({
+      at: Date.now(),
+      ...parsed.changesThisWeek,
+    });
+  }
+
+  const updated = {
+    ...parsed,
+    generatedAt: prevPlan.generatedAt || Date.now(),
+    adaptedAt: Date.now(),
+    userProfile: prevPlan.userProfile,
+    adaptationLog: adaptationLog.slice(0, 12),
+  };
+
+  await Storage.set(KEYS.PLAN(userEmail), updated);
+  return updated;
+}
+
 function calculateAge(birthday) {
   if (!birthday) return 25;
   const parts = birthday.match(/(\d+)/g);

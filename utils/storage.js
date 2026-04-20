@@ -32,4 +32,5 @@ export const KEYS = {
   CALTARGET: (uid)        => 'caltarget_' + cleanUid(uid),
   WATER:     (uid, date)  => 'water_'   + cleanUid(uid) + '_' + date.replace(/ /g, '_'),
   FOODLOG:   (uid, date)  => 'foodlog_' + cleanUid(uid) + '_' + date.replace(/ /g, '_'),
+  ADHERENCE: (uid)        => 'adherence_' + cleanUid(uid),
 };

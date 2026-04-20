@@ -6,25 +6,38 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
-import { generatePlanFromOnboarding } from '../utils/planGenerator';
+import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
+import { buildWeeklyContext, logSession } from '../utils/planAdapter';
 
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
+const TODAY = new Date().toDateString();
 
 export default function MyPlanScreen({ user, onNavigate }) {
   const { C } = useTheme();
   const s = makeStyles(C);
-  const [plan, setPlan]       = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [plan, setPlan]         = useState(null);
+  const [loading, setLoading]   = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+  const [adapting, setAdapting] = useState(false);
+  const [adherence, setAdherence] = useState([]);
+  const [ctx, setCtx]           = useState(null);
 
-  const loadPlan = useCallback(async () => {
+  const uid = user.uid;
+  const planKey = KEYS.PLAN(user.email || user.uid);
+
+  const loadAll = useCallback(async () => {
     setLoading(true);
-    const p = await Storage.get(KEYS.PLAN(user.email || user.uid));
+    const p = await Storage.get(planKey);
     setPlan(p);
+    const adh = (await Storage.get(KEYS.ADHERENCE(uid))) || [];
+    setAdherence(adh);
+    if (p) {
+      try { setCtx(await buildWeeklyContext(uid, p)); } catch {}
+    }
     setLoading(false);
-  }, [user.email, user.uid]);
+  }, [planKey, uid]);
 
-  useEffect(() => { loadPlan(); }, [loadPlan]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   const regenerate = async () => {
     try {
@@ -45,6 +58,38 @@ export default function MyPlanScreen({ user, onNavigate }) {
     } finally {
       setRegenerating(false);
     }
+  };
+
+  const adaptNow = async () => {
+    if (!plan) return;
+    try {
+      setAdapting(true);
+      const raw = await AsyncStorage.getItem(ONBOARDING_DATA_KEY);
+      const ob = raw ? JSON.parse(raw) : (plan.userProfile || {});
+      const fresh = await buildWeeklyContext(uid, plan);
+      const updated = await adaptPlan(plan, ob, fresh, user.email || user.uid);
+      if (updated) {
+        setPlan(updated);
+        setCtx(await buildWeeklyContext(uid, updated));
+      } else {
+        Alert.alert('Adaptation failed', 'Please try again in a moment.');
+      }
+    } catch (e) {
+      Alert.alert('Error', e.message || 'Adaptation failed.');
+    } finally {
+      setAdapting(false);
+    }
+  };
+
+  const markSession = async (day, type, completed) => {
+    const updated = await logSession(uid, { date: TODAY, day, type, completed });
+    setAdherence(updated);
+  };
+
+  const sessionStatus = (day) => {
+    const e = adherence.find(a => a.date === TODAY && a.day === day);
+    if (!e) return null;
+    return e.completed ? 'done' : 'skipped';
   };
 
   if (loading) {
@@ -74,18 +119,109 @@ export default function MyPlanScreen({ user, onNavigate }) {
     );
   }
 
-  const generatedDate = plan.generatedAt
-    ? new Date(plan.generatedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+  const lastTouchTs = plan.adaptedAt || plan.generatedAt;
+  const lastTouchDate = lastTouchTs
+    ? new Date(lastTouchTs).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
     : 'recently';
+  const daysSince = ctx?.daysSinceLastAdapt;
+  const lastChange = Array.isArray(plan.adaptationLog) && plan.adaptationLog.length > 0
+    ? plan.adaptationLog[0]
+    : null;
 
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <Text style={s.titleBarText}>Training</Text>
-        <Text style={s.titleBarSub}>Last updated {generatedDate}</Text>
+        <Text style={s.titleBarSub}>
+          {plan.adaptedAt ? 'Last adapted' : 'Generated'} {lastTouchDate}
+          {daysSince !== null && daysSince !== undefined ? ` · ${daysSince}d ago` : ''}
+        </Text>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
+        <View style={s.adaptCard}>
+          <View style={s.adaptHeader}>
+            <Text style={s.adaptTitle}>Adaptive Coaching</Text>
+            {ctx?.workout?.adherencePct !== null && ctx?.workout?.adherencePct !== undefined && (
+              <View style={s.adhPill}>
+                <Text style={s.adhPillText}>{ctx.workout.adherencePct}% adherence</Text>
+              </View>
+            )}
+          </View>
+          <View style={s.statsRow}>
+            <View style={s.statBox}>
+              <Text style={s.statVal}>
+                {ctx?.weight?.observedKgPerWeek !== undefined && ctx?.weight?.observedKgPerWeek !== null
+                  ? `${ctx.weight.observedKgPerWeek > 0 ? '+' : ''}${ctx.weight.observedKgPerWeek}kg`
+                  : '—'}
+              </Text>
+              <Text style={s.statLabel}>Weekly trend</Text>
+            </View>
+            <View style={s.statBox}>
+              <Text style={s.statVal}>
+                {ctx?.nutrition?.avgCaloriesLast7d ?? '—'}
+              </Text>
+              <Text style={s.statLabel}>
+                Avg kcal {ctx?.nutrition?.targetCalories ? `(target ${ctx.nutrition.targetCalories})` : ''}
+              </Text>
+            </View>
+            <View style={s.statBox}>
+              <Text style={s.statVal}>
+                {ctx?.workout?.sessionsCompletedLast7d ?? 0}
+                <Text style={s.statValDim}>/{ctx?.workout?.sessionsPlannedPerWeek ?? '—'}</Text>
+              </Text>
+              <Text style={s.statLabel}>Sessions done</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[s.adaptBtn, adapting && { opacity: 0.6 }]}
+            onPress={adaptNow}
+            disabled={adapting}
+            activeOpacity={0.85}
+          >
+            {adapting
+              ? <ActivityIndicator color={C.bg} />
+              : <Text style={s.adaptBtnText}>⚡ Adapt Plan to This Week's Data</Text>}
+          </TouchableOpacity>
+          <Text style={s.adaptHint}>
+            Uses your weight log, food log and session check-ins from the last 7 days.
+          </Text>
+        </View>
+
+        {lastChange && (
+          <View style={s.changeCard}>
+            <Text style={s.changeLabel}>WHAT CHANGED LAST UPDATE</Text>
+            {lastChange.summary ? (
+              <Text style={s.changeSummary}>{lastChange.summary}</Text>
+            ) : null}
+            {Array.isArray(lastChange.adjustments) && lastChange.adjustments.map((a, i) => (
+              <View key={i} style={s.adjRow}>
+                <Text style={s.adjArea}>{a.area}</Text>
+                <Text style={s.adjBeforeAfter}>
+                  {a.before} <Text style={s.adjArrow}>→</Text> {a.after}
+                </Text>
+                {a.why ? <Text style={s.adjWhy}>{a.why}</Text> : null}
+              </View>
+            ))}
+            {Array.isArray(lastChange.wins) && lastChange.wins.length > 0 && (
+              <View style={s.changeSubBlock}>
+                <Text style={s.changeSubLabel}>WINS</Text>
+                {lastChange.wins.map((w, i) => (
+                  <Text key={i} style={s.changeBullet}>✓ {w}</Text>
+                ))}
+              </View>
+            )}
+            {Array.isArray(lastChange.focusNextWeek) && lastChange.focusNextWeek.length > 0 && (
+              <View style={s.changeSubBlock}>
+                <Text style={s.changeSubLabel}>FOCUS NEXT WEEK</Text>
+                {lastChange.focusNextWeek.map((f, i) => (
+                  <Text key={i} style={s.changeBullet}>→ {f}</Text>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         {plan.userProfile && (
           <View style={s.profileBadge}>
             <Text style={s.profileBadgeLabel}>YOUR PROFILE</Text>
@@ -122,14 +258,42 @@ export default function MyPlanScreen({ user, onNavigate }) {
 
         {(plan.workoutPlan || []).map((w, i) => {
           const isRest = /^rest$/i.test(w.type || '');
+          const status = !isRest ? sessionStatus(w.day) : null;
+          const isToday = new Date().toLocaleDateString('en-US', { weekday: 'long' }) === w.day;
           return (
-            <View key={i} style={[s.workoutCard, isRest && s.restCard]}>
+            <View key={i} style={[s.workoutCard, isRest && s.restCard, isToday && s.todayCard]}>
               <View style={s.workoutHeader}>
-                <Text style={s.workoutDay}>{w.day}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <Text style={s.workoutDay}>{w.day}</Text>
+                  {isToday && <View style={s.todayBadge}><Text style={s.todayBadgeText}>TODAY</Text></View>}
+                </View>
                 <View style={[s.typeBadge, isRest && s.restBadge]}>
                   <Text style={[s.typeText, isRest && s.restText]}>{w.type}</Text>
                 </View>
               </View>
+
+              {!isRest && (
+                <View style={s.checkRow}>
+                  <TouchableOpacity
+                    style={[s.checkBtn, status === 'done' && s.checkBtnDone]}
+                    onPress={() => markSession(w.day, w.type, true)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[s.checkBtnText, status === 'done' && s.checkBtnTextDone]}>
+                      {status === 'done' ? '✓ Completed' : 'Mark Done'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.checkBtn, s.checkBtnSkip, status === 'skipped' && s.checkBtnSkippedActive]}
+                    onPress={() => markSession(w.day, w.type, false)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[s.checkBtnText, status === 'skipped' && s.checkBtnSkippedText]}>
+                      {status === 'skipped' ? '✗ Skipped' : 'Skip'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               <View style={s.metaRow}>
                 {w.focus  ? <Text style={s.metaChip}>● {w.focus}</Text> : null}
@@ -301,4 +465,42 @@ const makeStyles = (C) => StyleSheet.create({
   tipText: { color: C.light, fontSize: 14, lineHeight: 22, flex: 1 },
   updateBtn: { borderWidth: 1.5, borderColor: C.border, paddingVertical: 14, borderRadius: 14, alignItems: 'center', marginTop: 16 },
   updateBtnText: { color: C.muted, fontSize: 14, fontWeight: '700' },
+
+  adaptCard: { backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: C.border },
+  adaptHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  adaptTitle: { color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 0.3 },
+  adhPill: { backgroundColor: C.greenGlow2, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  adhPillText: { color: C.green, fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
+  statsRow: { flexDirection: 'row', marginBottom: 14 },
+  statBox: { flex: 1, backgroundColor: C.surface, borderRadius: 10, padding: 10, marginRight: 6, alignItems: 'center' },
+  statVal: { color: C.green, fontSize: 18, fontWeight: '900' },
+  statValDim: { color: C.muted, fontSize: 14, fontWeight: '700' },
+  statLabel: { color: C.muted, fontSize: 10, marginTop: 3, textAlign: 'center', letterSpacing: 0.3 },
+  adaptBtn: { backgroundColor: C.green, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  adaptBtnText: { color: C.bg, fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
+  adaptHint: { color: C.muted, fontSize: 11, textAlign: 'center', marginTop: 10, lineHeight: 16 },
+
+  changeCard: { backgroundColor: C.greenGlow2, borderRadius: 14, padding: 14, marginBottom: 14, borderLeftWidth: 3, borderLeftColor: C.green },
+  changeLabel: { color: C.green, fontSize: 10, fontWeight: '900', letterSpacing: 2, marginBottom: 8 },
+  changeSummary: { color: C.light, fontSize: 13, lineHeight: 20, marginBottom: 12 },
+  adjRow: { backgroundColor: C.card, borderRadius: 10, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: C.border },
+  adjArea: { color: C.green, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 4 },
+  adjBeforeAfter: { color: C.white, fontSize: 13, fontWeight: '700' },
+  adjArrow: { color: C.green, fontWeight: '900' },
+  adjWhy: { color: C.mutedLight, fontSize: 11, fontStyle: 'italic', marginTop: 4, lineHeight: 16 },
+  changeSubBlock: { marginTop: 8 },
+  changeSubLabel: { color: C.green, fontSize: 10, fontWeight: '900', letterSpacing: 1.5, marginBottom: 6 },
+  changeBullet: { color: C.mutedLight, fontSize: 12, lineHeight: 18, marginBottom: 3 },
+
+  todayCard: { borderColor: C.green, borderWidth: 1.5 },
+  todayBadge: { backgroundColor: C.green, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginLeft: 8 },
+  todayBadgeText: { color: C.bg, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  checkRow: { flexDirection: 'row', marginTop: 4, marginBottom: 4 },
+  checkBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', marginRight: 6, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
+  checkBtnDone: { backgroundColor: C.green, borderColor: C.green },
+  checkBtnSkip: { marginRight: 0 },
+  checkBtnSkippedActive: { backgroundColor: C.surface, borderColor: C.muted },
+  checkBtnText: { color: C.muted, fontSize: 12, fontWeight: '800' },
+  checkBtnTextDone: { color: C.bg },
+  checkBtnSkippedText: { color: C.white },
 });
