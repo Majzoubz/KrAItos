@@ -1,154 +1,136 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  SafeAreaView, ScrollView, Alert, Animated, Platform,
-  ActivityIndicator, Image, Dimensions,
+  SafeAreaView, ScrollView, Animated, Platform,
+  ActivityIndicator, Image,
 } from 'react-native';
 import { C } from '../constants/theme';
 import { Storage, KEYS } from '../utils/storage';
 import { Auth } from '../utils/auth';
 
-const RING_SIZE = 180;
-
-function CalorieRing({ consumed, target }) {
-  const pct = target > 0 ? Math.min(consumed / target, 1) : 0;
-  const remaining = Math.max(target - consumed, 0);
-  const deg = Math.round(pct * 360);
-
+function Ring({ size, stroke, pct, color, children, trackColor }) {
+  const deg = Math.round(Math.min(Math.max(pct, 0), 1) * 360);
   const ringStyle = Platform.OS === 'web' ? {
-    background: `conic-gradient(${C.green} ${deg}deg, ${C.border} ${deg}deg)`,
-  } : {
-    backgroundColor: C.border,
-  };
+    background: `conic-gradient(${color} ${deg}deg, ${trackColor || C.border} ${deg}deg)`,
+  } : { backgroundColor: trackColor || C.border };
 
   return (
-    <View style={s.ringWrap}>
-      <View style={[s.ringOuter, ringStyle]}>
-        <View style={s.ringInnerCut}>
-          <Text style={s.ringBig}>{remaining}</Text>
-          <Text style={s.ringSub}>remaining</Text>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={[{
+        width: size, height: size, borderRadius: size / 2,
+        alignItems: 'center', justifyContent: 'center',
+      }, ringStyle]}>
+        <View style={{
+          width: size - stroke * 2, height: size - stroke * 2,
+          borderRadius: (size - stroke * 2) / 2,
+          backgroundColor: C.card,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          {children}
         </View>
       </View>
     </View>
   );
 }
 
-function MacroBar({ label, current, target, color }) {
-  const pct = target > 0 ? Math.min(current / target, 1) * 100 : 0;
-  return (
-    <View style={s.macroBarWrap}>
-      <View style={s.macroBarTop}>
-        <View style={[s.macroDot, { backgroundColor: color }]} />
-        <Text style={s.macroBarLabel}>{label}</Text>
-        <Text style={s.macroBarNums}>
-          <Text style={{ color: C.white, fontWeight: '700' }}>{current}</Text>
-          <Text style={{ color: C.muted }}> / {target}g</Text>
-        </Text>
-      </View>
-      <View style={s.macroTrack}>
-        <View style={[s.macroFill, { width: `${pct}%`, backgroundColor: color }]} />
-      </View>
-    </View>
-  );
-}
-
-function MealSection({ title, icon, meals, onAdd, onNavigate }) {
-  const sectionMeals = meals.filter(m => {
-    const name = (m.meal || '').toLowerCase();
-    const t = title.toLowerCase();
-    if (t === 'breakfast') return name.includes('breakfast');
-    if (t === 'lunch') return name.includes('lunch');
-    if (t === 'dinner') return name.includes('dinner');
-    return name.includes('snack') || (!name.includes('breakfast') && !name.includes('lunch') && !name.includes('dinner'));
-  });
+function DateStrip({ selectedIdx, onSelect, today }) {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+  const dayLetters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   return (
-    <View style={s.mealSection}>
-      <View style={s.mealSectionHeader}>
-        <Text style={s.mealSectionIcon}>{icon}</Text>
-        <Text style={s.mealSectionTitle}>{title}</Text>
-        <TouchableOpacity style={s.mealAddBtn} onPress={onAdd}>
-          <Text style={s.mealAddText}>+</Text>
-        </TouchableOpacity>
-      </View>
-      {sectionMeals.length > 0 ? (
-        sectionMeals.map((m, i) => (
-          <View key={i} style={s.mealItem}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.mealItemName}>{m.meal}</Text>
-              <View style={s.mealItemFoods}>
-                {(m.foods || []).slice(0, 2).map((f, j) => (
-                  <Text key={j} style={s.mealItemFood} numberOfLines={1}>{f}</Text>
-                ))}
-                {(m.foods || []).length > 2 && (
-                  <Text style={s.mealItemMore}>+{m.foods.length - 2} more</Text>
-                )}
-              </View>
+    <View style={s.dateStrip}>
+      {days.map((d, i) => {
+        const active = i === selectedIdx;
+        return (
+          <TouchableOpacity key={i} style={s.dateCell} onPress={() => onSelect(i)} activeOpacity={0.7}>
+            <Text style={[s.dateDay, active && s.dateDayActive]}>{dayLetters[d.getDay()]}</Text>
+            <View style={[s.dateNumWrap, active && s.dateNumWrapActive]}>
+              <Text style={[s.dateNum, active && s.dateNumActive]}>{d.getDate()}</Text>
             </View>
-            <View style={s.mealItemRight}>
-              <Text style={s.mealItemCal}>{m.calories}</Text>
-              <Text style={s.mealItemCalLabel}>kcal</Text>
-            </View>
-          </View>
-        ))
-      ) : (
-        <TouchableOpacity style={s.mealEmpty} onPress={onAdd}>
-          <Text style={s.mealEmptyText}>Tap + to add {title.toLowerCase()}</Text>
-        </TouchableOpacity>
-      )}
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
 
 export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
-  const [water, setWater]             = useState(0);
   const [plan, setPlan]               = useState(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
-  const [todayDate]                   = useState(new Date().toDateString());
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [foodLog, setFoodLog]         = useState([]);
+  const [streak, setStreak]           = useState(user.streak || 0);
+  const today                         = new Date();
+  const [todayDate]                   = useState(today.toDateString());
+  const fadeAnim                      = useRef(new Animated.Value(0)).current;
+
+  const loadData = useCallback(async () => {
+    const [p, log] = await Promise.all([
+      Storage.get(KEYS.PLAN(user.email || user.uid)),
+      Storage.get(KEYS.FOODLOG(user.uid, todayDate)),
+    ]);
+    setPlan(p);
+    setFoodLog(Array.isArray(log) ? log : []);
+    setLoadingPlan(false);
+  }, [user.uid, user.email, todayDate]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
-    Storage.get(KEYS.WATER(user.uid, todayDate)).then(d => { if (d) setWater(d); });
-    Storage.get(KEYS.PLAN(user.email || user.uid)).then(p => {
-      setPlan(p);
-      setLoadingPlan(false);
-    });
-  }, []);
+    loadData();
+  }, [loadData]);
 
-  const addWater = async () => {
-    if (water >= 8) return;
-    const n = water + 1;
-    setWater(n);
-    await Storage.set(KEYS.WATER(user.uid, todayDate), n);
-    if (n === 8) {
-      const updated = await Auth.logActivity(user.uid);
-      if (updated && onUserUpdate) onUserUpdate(updated);
-    }
-  };
+  const totals = foodLog.reduce((acc, item) => ({
+    calories: acc.calories + (item.calories || 0),
+    protein:  acc.protein  + (item.protein  || 0),
+    carbs:    acc.carbs    + (item.carbs    || 0),
+    fat:      acc.fat      + (item.fat      || 0),
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-  const todayFormatted = new Date().toLocaleDateString('en-US', {
+  const target          = plan?.dailyCalories || 2000;
+  const proteinTarget   = plan?.protein || 150;
+  const carbsTarget     = plan?.carbs   || 200;
+  const fatTarget       = plan?.fat     || 65;
+
+  const consumed        = Math.round(totals.calories);
+  const proteinConsumed = Math.round(totals.protein);
+  const carbsConsumed   = Math.round(totals.carbs);
+  const fatConsumed     = Math.round(totals.fat);
+
+  const remaining       = Math.max(target - consumed, 0);
+  const calPct          = target > 0 ? consumed / target : 0;
+  const proteinLeft     = Math.max(proteinTarget - proteinConsumed, 0);
+  const carbsLeft       = Math.max(carbsTarget   - carbsConsumed,   0);
+  const fatLeft         = Math.max(fatTarget     - fatConsumed,     0);
+
+  const todayFormatted = today.toLocaleDateString('en-US', {
     weekday: 'long', month: 'short', day: 'numeric',
   });
 
-  const consumed = 0;
-  const target = plan?.dailyCalories || 2000;
-  const proteinTarget = plan?.protein || 150;
-  const carbsTarget = plan?.carbs || 200;
-  const fatTarget = plan?.fat || 65;
+  const recent = [...foodLog].slice(-5).reverse();
 
   return (
     <SafeAreaView style={s.safe}>
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+
         <View style={s.topBar}>
-          <View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.brandName}>GreenGain</Text>
             <Text style={s.dateText}>{todayFormatted}</Text>
-            <Text style={s.hiText}>Hi, {user.fullName?.split(' ')[0]}</Text>
+          </View>
+          <View style={s.streakBadge}>
+            <Text style={s.streakIcon}>🔥</Text>
+            <Text style={s.streakNum}>{streak}</Text>
           </View>
           <TouchableOpacity style={s.profileBtn} onPress={() => onNavigate('profile')}>
             <Text style={s.profileLetter}>{user.fullName?.[0]?.toUpperCase()}</Text>
           </TouchableOpacity>
         </View>
+
+        <DateStrip selectedIdx={6} onSelect={() => {}} today={today} />
 
         <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
 
@@ -157,81 +139,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
               <ActivityIndicator color={C.green} size="large" />
               <Text style={s.loadingLabel}>Loading your plan...</Text>
             </View>
-          ) : plan ? (
-            <>
-              <View style={s.calorieArea}>
-                <CalorieRing consumed={consumed} target={target} />
-                <View style={s.calStats}>
-                  <View style={s.calStatItem}>
-                    <Text style={s.calStatNum}>{target}</Text>
-                    <Text style={s.calStatSub}>Budget</Text>
-                  </View>
-                  <View style={s.calStatDivider} />
-                  <View style={s.calStatItem}>
-                    <Text style={s.calStatNum}>{consumed}</Text>
-                    <Text style={s.calStatSub}>Consumed</Text>
-                  </View>
-                  <View style={s.calStatDivider} />
-                  <View style={s.calStatItem}>
-                    <Text style={[s.calStatNum, { color: C.green }]}>{target - consumed}</Text>
-                    <Text style={s.calStatSub}>Remaining</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={s.macrosSection}>
-                <MacroBar label="Protein" current={0} target={proteinTarget} color="#FF6B6B" />
-                <MacroBar label="Carbs" current={0} target={carbsTarget} color="#4ECDC4" />
-                <MacroBar label="Fat" current={0} target={fatTarget} color="#FFD93D" />
-              </View>
-
-              <TouchableOpacity style={s.scanBtn} onPress={() => onNavigate('scanner')}>
-                <Text style={s.scanIcon}>📸</Text>
-                <Text style={s.scanText}>Scan Food</Text>
-              </TouchableOpacity>
-
-              <MealSection title="Breakfast" icon="🌅" meals={plan.mealPlan || []} onAdd={() => onNavigate('scanner')} onNavigate={onNavigate} />
-              <MealSection title="Lunch" icon="☀️" meals={plan.mealPlan || []} onAdd={() => onNavigate('scanner')} onNavigate={onNavigate} />
-              <MealSection title="Dinner" icon="🌙" meals={plan.mealPlan || []} onAdd={() => onNavigate('scanner')} onNavigate={onNavigate} />
-              <MealSection title="Snacks" icon="🍎" meals={plan.mealPlan || []} onAdd={() => onNavigate('scanner')} onNavigate={onNavigate} />
-
-              <View style={s.waterSection}>
-                <View style={s.waterTop}>
-                  <Text style={s.waterIcon}>💧</Text>
-                  <Text style={s.waterLabel}>Water</Text>
-                  <Text style={s.waterCount}>{water} / 8</Text>
-                </View>
-                <View style={s.waterDots}>
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={[s.waterDot, i < water && s.waterDotFilled]}
-                      onPress={i >= water ? addWater : undefined}
-                    />
-                  ))}
-                </View>
-              </View>
-
-              <View style={s.quickRow}>
-                <TouchableOpacity style={s.quickCard} onPress={() => onNavigate('plan')}>
-                  <Text style={s.quickIcon}>📋</Text>
-                  <Text style={s.quickLabel}>My Plan</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.quickCard} onPress={() => onNavigate('coach')}>
-                  <Text style={s.quickIcon}>🤖</Text>
-                  <Text style={s.quickLabel}>AI Coach</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.quickCard} onPress={() => onNavigate('tracker')}>
-                  <Text style={s.quickIcon}>📊</Text>
-                  <Text style={s.quickLabel}>Progress</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.quickCard} onPress={() => onNavigate('foodlog')}>
-                  <Text style={s.quickIcon}>📝</Text>
-                  <Text style={s.quickLabel}>Food Log</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
+          ) : !plan ? (
             <View style={s.emptyState}>
               <Image source={require('../assets/logo.png')} style={s.emptyLogo} resizeMode="contain" />
               <Text style={s.emptyTitle}>Get Your AI Plan</Text>
@@ -241,43 +149,92 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
               <TouchableOpacity style={s.emptyBtn} onPress={() => onNavigate('coach')}>
                 <Text style={s.emptyBtnText}>Generate My Plan</Text>
               </TouchableOpacity>
-
-              <View style={[s.waterSection, { marginTop: 30, width: '100%' }]}>
-                <View style={s.waterTop}>
-                  <Text style={s.waterIcon}>💧</Text>
-                  <Text style={s.waterLabel}>Water</Text>
-                  <Text style={s.waterCount}>{water} / 8</Text>
-                </View>
-                <View style={s.waterDots}>
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={[s.waterDot, i < water && s.waterDotFilled]}
-                      onPress={i >= water ? addWater : undefined}
-                    />
-                  ))}
-                </View>
-              </View>
-
-              <View style={[s.quickRow, { marginTop: 16 }]}>
-                <TouchableOpacity style={s.quickCard} onPress={() => onNavigate('scanner')}>
-                  <Text style={s.quickIcon}>📸</Text>
-                  <Text style={s.quickLabel}>Scanner</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.quickCard} onPress={() => onNavigate('coach')}>
-                  <Text style={s.quickIcon}>🤖</Text>
-                  <Text style={s.quickLabel}>AI Coach</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.quickCard} onPress={() => onNavigate('tracker')}>
-                  <Text style={s.quickIcon}>📊</Text>
-                  <Text style={s.quickLabel}>Progress</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.quickCard} onPress={() => onNavigate('foodlog')}>
-                  <Text style={s.quickIcon}>📝</Text>
-                  <Text style={s.quickLabel}>Food Log</Text>
-                </TouchableOpacity>
-              </View>
             </View>
+          ) : (
+            <>
+              {/* Hero calories card */}
+              <View style={s.heroCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.heroNum}>{remaining}</Text>
+                  <Text style={s.heroLabel}>Calories left</Text>
+                  <View style={s.heroSubRow}>
+                    <Text style={s.heroSubText}>
+                      <Text style={{ color: C.white, fontWeight: '700' }}>{consumed}</Text>
+                      <Text style={{ color: C.muted }}> eaten · </Text>
+                      <Text style={{ color: C.white, fontWeight: '700' }}>{target}</Text>
+                      <Text style={{ color: C.muted }}> goal</Text>
+                    </Text>
+                  </View>
+                </View>
+                <Ring size={100} stroke={10} pct={calPct} color={C.green}>
+                  <Text style={s.ringIcon}>🔥</Text>
+                </Ring>
+              </View>
+
+              {/* Macro cards row */}
+              <View style={s.macroRow}>
+                <View style={s.macroCard}>
+                  <Text style={s.macroNum}>{proteinLeft}g</Text>
+                  <Text style={s.macroLabel}>Protein left</Text>
+                  <Ring size={48} stroke={5} pct={proteinTarget > 0 ? proteinConsumed / proteinTarget : 0} color={C.green}>
+                    <Text style={s.macroIcon}>🥩</Text>
+                  </Ring>
+                </View>
+                <View style={s.macroCard}>
+                  <Text style={s.macroNum}>{carbsLeft}g</Text>
+                  <Text style={s.macroLabel}>Carbs left</Text>
+                  <Ring size={48} stroke={5} pct={carbsTarget > 0 ? carbsConsumed / carbsTarget : 0} color={C.green}>
+                    <Text style={s.macroIcon}>🍞</Text>
+                  </Ring>
+                </View>
+                <View style={s.macroCard}>
+                  <Text style={s.macroNum}>{fatLeft}g</Text>
+                  <Text style={s.macroLabel}>Fats left</Text>
+                  <Ring size={48} stroke={5} pct={fatTarget > 0 ? fatConsumed / fatTarget : 0} color={C.green}>
+                    <Text style={s.macroIcon}>🥑</Text>
+                  </Ring>
+                </View>
+              </View>
+
+              {/* Recently logged */}
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionTitle}>Recently logged</Text>
+                <TouchableOpacity onPress={() => onNavigate('foodlog')}>
+                  <Text style={s.sectionLink}>See all</Text>
+                </TouchableOpacity>
+              </View>
+
+              {recent.length === 0 ? (
+                <View style={s.emptyLog}>
+                  <Text style={s.emptyLogIcon}>🍽️</Text>
+                  <Text style={s.emptyLogTitle}>Nothing logged yet</Text>
+                  <Text style={s.emptyLogText}>Snap a photo or add food to get started.</Text>
+                </View>
+              ) : (
+                recent.map((item, i) => (
+                  <View key={item.id || i} style={s.foodCard}>
+                    <View style={s.foodIconWrap}>
+                      <Text style={s.foodIcon}>{item.source === 'scanner' ? '📸' : '🍴'}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.foodName} numberOfLines={1}>{item.name}</Text>
+                      <Text style={s.foodMacros}>
+                        P {Math.round(item.protein || 0)}g · C {Math.round(item.carbs || 0)}g · F {Math.round(item.fat || 0)}g
+                      </Text>
+                    </View>
+                    <View style={s.foodRight}>
+                      <Text style={s.foodCal}>{Math.round(item.calories || 0)}</Text>
+                      <Text style={s.foodCalLabel}>kcal</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+
+              <TouchableOpacity style={s.addBtn} onPress={() => onNavigate('scanner')} activeOpacity={0.85}>
+                <Text style={s.addBtnIcon}>+</Text>
+                <Text style={s.addBtnText}>Add food</Text>
+              </TouchableOpacity>
+            </>
           )}
 
         </ScrollView>
@@ -288,127 +245,116 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
-  scrollContent: { paddingBottom: 120 },
+  scrollContent: { paddingBottom: 130, paddingHorizontal: 16, paddingTop: 12 },
 
   topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8,
-    borderBottomWidth: 1, borderBottomColor: C.border,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
   },
-  dateText: { color: C.muted, fontSize: 12, fontWeight: '500' },
-  hiText:   { color: C.white, fontSize: 20, fontWeight: '800', marginTop: 2 },
+  brandName: { color: C.white, fontSize: 22, fontWeight: '900', letterSpacing: 0.3 },
+  dateText:  { color: C.muted, fontSize: 12, fontWeight: '500', marginTop: 1 },
+  streakBadge: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card, borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: C.border, marginRight: 10,
+  },
+  streakIcon: { fontSize: 14, marginRight: 4 },
+  streakNum:  { color: C.white, fontSize: 14, fontWeight: '800' },
   profileBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: C.green, alignItems: 'center', justifyContent: 'center',
   },
-  profileLetter: { color: C.bg, fontSize: 16, fontWeight: '900' },
+  profileLetter: { color: C.bg, fontSize: 15, fontWeight: '900' },
+
+  dateStrip: {
+    flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 8,
+    justifyContent: 'space-between',
+  },
+  dateCell: { alignItems: 'center', flex: 1 },
+  dateDay: { color: C.muted, fontSize: 11, fontWeight: '700', marginBottom: 6 },
+  dateDayActive: { color: C.green },
+  dateNumWrap: {
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  dateNumWrapActive: { backgroundColor: C.green },
+  dateNum: { color: C.mutedLight, fontSize: 14, fontWeight: '700' },
+  dateNumActive: { color: C.bg, fontWeight: '900' },
 
   loadingWrap: { alignItems: 'center', paddingVertical: 80 },
   loadingLabel: { color: C.muted, fontSize: 14, marginTop: 16 },
 
-  calorieArea: { alignItems: 'center', paddingTop: 28, paddingBottom: 20 },
-  ringWrap: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
-  ringOuter: {
-    width: RING_SIZE, height: RING_SIZE, borderRadius: RING_SIZE / 2,
+  heroCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card, borderRadius: 24,
+    padding: 20, marginTop: 8, marginBottom: 12,
+    borderWidth: 1, borderColor: C.border,
+  },
+  heroNum:   { color: C.white, fontSize: 44, fontWeight: '900', letterSpacing: -1 },
+  heroLabel: { color: C.muted, fontSize: 14, fontWeight: '600', marginTop: 2 },
+  heroSubRow: { marginTop: 10 },
+  heroSubText: { fontSize: 12 },
+  ringIcon: { fontSize: 28 },
+
+  macroRow: { flexDirection: 'row', marginBottom: 16 },
+  macroCard: {
+    flex: 1, backgroundColor: C.card, borderRadius: 20,
+    padding: 14, marginHorizontal: 4,
+    borderWidth: 1, borderColor: C.border,
+    alignItems: 'flex-start',
+  },
+  macroNum:   { color: C.white, fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
+  macroLabel: { color: C.muted, fontSize: 11, fontWeight: '600', marginTop: 2, marginBottom: 12 },
+  macroIcon:  { fontSize: 18 },
+
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 6, marginBottom: 10, paddingHorizontal: 4,
+  },
+  sectionTitle: { color: C.white, fontSize: 16, fontWeight: '800' },
+  sectionLink:  { color: C.green, fontSize: 13, fontWeight: '700' },
+
+  emptyLog: {
+    backgroundColor: C.card, borderRadius: 20, padding: 28,
+    alignItems: 'center', borderWidth: 1, borderColor: C.border, marginBottom: 12,
+  },
+  emptyLogIcon: { fontSize: 36, marginBottom: 8 },
+  emptyLogTitle: { color: C.white, fontSize: 15, fontWeight: '800', marginBottom: 4 },
+  emptyLogText: { color: C.muted, fontSize: 13, textAlign: 'center' },
+
+  foodCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card, borderRadius: 18,
+    padding: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: C.border,
+  },
+  foodIconWrap: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: C.greenGlow,
     alignItems: 'center', justifyContent: 'center',
+    marginRight: 12,
   },
-  ringInnerCut: {
-    width: RING_SIZE - 20, height: RING_SIZE - 20, borderRadius: (RING_SIZE - 20) / 2,
-    backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center',
-  },
-  ringBig: { color: C.white, fontSize: 40, fontWeight: '900' },
-  ringSub: { color: C.muted, fontSize: 12, marginTop: 2 },
-  calStats: {
-    flexDirection: 'row', alignItems: 'center',
-    marginTop: 20, paddingHorizontal: 20,
-  },
-  calStatItem: { flex: 1, alignItems: 'center' },
-  calStatNum: { color: C.white, fontSize: 18, fontWeight: '800' },
-  calStatSub: { color: C.muted, fontSize: 11, marginTop: 2 },
-  calStatDivider: { width: 1, height: 28, backgroundColor: C.border },
+  foodIcon: { fontSize: 20 },
+  foodName: { color: C.white, fontSize: 14, fontWeight: '700' },
+  foodMacros: { color: C.muted, fontSize: 11, marginTop: 3 },
+  foodRight: { alignItems: 'flex-end', marginLeft: 8 },
+  foodCal: { color: C.white, fontSize: 17, fontWeight: '900' },
+  foodCalLabel: { color: C.muted, fontSize: 10 },
 
-  macrosSection: { paddingHorizontal: 20, marginBottom: 16 },
-  macroBarWrap: { marginBottom: 12 },
-  macroBarTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  macroDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  macroBarLabel: { color: C.white, fontSize: 13, fontWeight: '600', flex: 1 },
-  macroBarNums: { fontSize: 13 },
-  macroTrack: { height: 6, backgroundColor: C.surface, borderRadius: 3, overflow: 'hidden' },
-  macroFill: { height: 6, borderRadius: 3 },
-
-  scanBtn: {
+  addBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: C.green, marginHorizontal: 20, paddingVertical: 14,
-    borderRadius: 14, marginBottom: 20,
+    backgroundColor: C.green, paddingVertical: 16, borderRadius: 18,
+    marginTop: 14,
+    ...(Platform.OS === 'web' ? { boxShadow: '0 8px 24px rgba(127,255,0,0.25)' } : {}),
   },
-  scanIcon: { fontSize: 18, marginRight: 8 },
-  scanText: { color: C.bg, fontSize: 16, fontWeight: '900' },
+  addBtnIcon: { color: C.bg, fontSize: 22, fontWeight: '900', marginRight: 6, marginTop: -2 },
+  addBtnText: { color: C.bg, fontSize: 16, fontWeight: '900' },
 
-  mealSection: {
-    marginHorizontal: 20, marginBottom: 12,
-    backgroundColor: C.card, borderRadius: 16,
-    borderWidth: 1, borderColor: C.border, overflow: 'hidden',
-  },
-  mealSectionHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: C.border,
-  },
-  mealSectionIcon: { fontSize: 18, marginRight: 10 },
-  mealSectionTitle: { color: C.white, fontSize: 15, fontWeight: '700', flex: 1 },
-  mealAddBtn: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: C.green, alignItems: 'center', justifyContent: 'center',
-  },
-  mealAddText: { color: C.bg, fontSize: 18, fontWeight: '700', marginTop: -1 },
-  mealItem: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: C.border,
-  },
-  mealItemName: { color: C.white, fontSize: 14, fontWeight: '600' },
-  mealItemFoods: { marginTop: 3 },
-  mealItemFood: { color: C.muted, fontSize: 12, lineHeight: 18 },
-  mealItemMore: { color: C.green, fontSize: 11, fontWeight: '600', marginTop: 2 },
-  mealItemRight: { alignItems: 'flex-end', marginLeft: 12 },
-  mealItemCal: { color: C.white, fontSize: 16, fontWeight: '800' },
-  mealItemCalLabel: { color: C.muted, fontSize: 10 },
-  mealEmpty: { paddingVertical: 16, alignItems: 'center' },
-  mealEmptyText: { color: C.muted, fontSize: 13 },
-
-  waterSection: {
-    marginHorizontal: 20, marginBottom: 16,
-    backgroundColor: C.card, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: C.border,
-  },
-  waterTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  waterIcon: { fontSize: 16, marginRight: 8 },
-  waterLabel: { color: C.white, fontSize: 14, fontWeight: '700', flex: 1 },
-  waterCount: { color: C.muted, fontSize: 13 },
-  waterDots: { flexDirection: 'row' },
-  waterDot: {
-    flex: 1, height: 24, borderRadius: 8, marginHorizontal: 2,
-    backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
-  },
-  waterDotFilled: { backgroundColor: '#4FC3F7', borderColor: '#4FC3F7' },
-
-  quickRow: {
-    flexDirection: 'row', marginHorizontal: 20, marginBottom: 16,
-  },
-  quickCard: {
-    flex: 1, alignItems: 'center', paddingVertical: 16, marginHorizontal: 3,
-    backgroundColor: C.card, borderRadius: 14,
-    borderWidth: 1, borderColor: C.border,
-  },
-  quickIcon: { fontSize: 22, marginBottom: 6 },
-  quickLabel: { color: C.muted, fontSize: 11, fontWeight: '600' },
-
-  emptyState: {
-    alignItems: 'center', paddingHorizontal: 20, paddingTop: 40,
-  },
-  emptyLogo: { width: 60, height: 60, marginBottom: 20 },
-  emptyTitle: { color: C.white, fontSize: 22, fontWeight: '900', marginBottom: 8 },
-  emptyDesc: { color: C.muted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 24, maxWidth: 280 },
-  emptyBtn: { backgroundColor: C.green, paddingVertical: 14, paddingHorizontal: 40, borderRadius: 14 },
+  emptyState: { alignItems: 'center', paddingHorizontal: 20, paddingTop: 50 },
+  emptyLogo: { width: 72, height: 72, marginBottom: 20 },
+  emptyTitle: { color: C.white, fontSize: 24, fontWeight: '900', marginBottom: 10 },
+  emptyDesc: { color: C.muted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 28, maxWidth: 300 },
+  emptyBtn: { backgroundColor: C.green, paddingVertical: 16, paddingHorizontal: 44, borderRadius: 16 },
   emptyBtnText: { color: C.bg, fontSize: 15, fontWeight: '900' },
 });
