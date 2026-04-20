@@ -4,9 +4,13 @@ import {
   SafeAreaView, ScrollView, Animated, Platform,
   ActivityIndicator, Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { C } from '../constants/theme';
 import { Storage, KEYS } from '../utils/storage';
 import { Auth } from '../utils/auth';
+import { generatePlanFromOnboarding } from '../utils/planGenerator';
+
+const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
 function Ring({ size, stroke, pct, color, children, trackColor }) {
   const deg = Math.round(Math.min(Math.max(pct, 0), 1) * 360);
@@ -62,21 +66,63 @@ function DateStrip({ selectedIdx, onSelect, today }) {
 export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   const [plan, setPlan]               = useState(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
+  const [generating, setGenerating]   = useState(false);
+  const [genError, setGenError]       = useState(null);
   const [foodLog, setFoodLog]         = useState([]);
   const [streak, setStreak]           = useState(user.streak || 0);
   const today                         = new Date();
   const [todayDate]                   = useState(today.toDateString());
   const fadeAnim                      = useRef(new Animated.Value(0)).current;
 
+  const tryAutoGenerate = useCallback(async () => {
+    setGenError(null);
+    let onboarding = null;
+    try {
+      const raw = await AsyncStorage.getItem(ONBOARDING_DATA_KEY);
+      if (raw) onboarding = JSON.parse(raw);
+    } catch {}
+    if (!onboarding) {
+      try {
+        onboarding = await Storage.get(KEYS.ONBOARDING(user.email || user.uid));
+      } catch {}
+    }
+    if (!onboarding) {
+      setGenError('missing');
+      return null;
+    }
+    setGenerating(true);
+    try {
+      const generated = await generatePlanFromOnboarding(
+        onboarding,
+        user.email || user.uid,
+      );
+      if (generated) {
+        setPlan(generated);
+        return generated;
+      }
+      setGenError('failed');
+    } catch {
+      setGenError('failed');
+    } finally {
+      setGenerating(false);
+    }
+    return null;
+  }, [user.uid, user.email]);
+
   const loadData = useCallback(async () => {
     const [p, log] = await Promise.all([
       Storage.get(KEYS.PLAN(user.email || user.uid)),
       Storage.get(KEYS.FOODLOG(user.uid, todayDate)),
     ]);
-    setPlan(p);
     setFoodLog(Array.isArray(log) ? log : []);
-    setLoadingPlan(false);
-  }, [user.uid, user.email, todayDate]);
+    if (p) {
+      setPlan(p);
+      setLoadingPlan(false);
+    } else {
+      setLoadingPlan(false);
+      tryAutoGenerate();
+    }
+  }, [user.uid, user.email, todayDate, tryAutoGenerate]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
@@ -142,13 +188,35 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
           ) : !plan ? (
             <View style={s.emptyState}>
               <Image source={require('../assets/logo.png')} style={s.emptyLogo} resizeMode="contain" />
-              <Text style={s.emptyTitle}>Get Your AI Plan</Text>
-              <Text style={s.emptyDesc}>
-                Generate a personalized nutrition and workout plan tailored to your goals.
-              </Text>
-              <TouchableOpacity style={s.emptyBtn} onPress={() => onNavigate('coach')}>
-                <Text style={s.emptyBtnText}>Generate My Plan</Text>
-              </TouchableOpacity>
+              {generating ? (
+                <>
+                  <ActivityIndicator color={C.green} size="large" style={{ marginBottom: 18 }} />
+                  <Text style={s.emptyTitle}>Building your plan</Text>
+                  <Text style={s.emptyDesc}>
+                    We're crafting your personalized nutrition and workout plan from your sign-up details. This takes about 20 seconds.
+                  </Text>
+                </>
+              ) : genError === 'missing' ? (
+                <>
+                  <Text style={s.emptyTitle}>Tell us about you</Text>
+                  <Text style={s.emptyDesc}>
+                    We need your sign-up details to build your plan. Open the AI Coach to enter them.
+                  </Text>
+                  <TouchableOpacity style={s.emptyBtn} onPress={() => onNavigate('coach')}>
+                    <Text style={s.emptyBtnText}>Open AI Coach</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={s.emptyTitle}>Plan generation failed</Text>
+                  <Text style={s.emptyDesc}>
+                    We couldn't reach the AI right now. Check your connection and try again.
+                  </Text>
+                  <TouchableOpacity style={s.emptyBtn} onPress={tryAutoGenerate}>
+                    <Text style={s.emptyBtnText}>Try Again</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           ) : (
             <>
