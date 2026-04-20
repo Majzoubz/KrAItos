@@ -519,10 +519,6 @@ const makeStyles = (C) => StyleSheet.create({
   },
   sectionTitle: { color: C.white, fontSize: 16, fontWeight: '800' },
   sectionLink:  { color: C.green, fontSize: 13, fontWeight: '700' },
-  progressCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.green, borderRadius: 16, padding: 14, marginBottom: 16 },
-  progressIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.bg + '22', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  progressTitle: { color: C.bg, fontSize: 15, fontWeight: '900', letterSpacing: 0.3 },
-  progressSub:   { color: C.bg, fontSize: 11, opacity: 0.7, marginTop: 2 },
   progressArrow: { color: C.bg, fontSize: 22, fontWeight: '900', marginLeft: 8 },
   healthCard: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: C.card,

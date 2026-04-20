@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
-import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
+import { generatePlanFromOnboarding } from '../utils/planGenerator';
 import { buildWeeklyContext, logSession } from '../utils/planAdapter';
 
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
@@ -18,7 +18,6 @@ export default function MyPlanScreen({ user, onNavigate }) {
   const [plan, setPlan]         = useState(null);
   const [loading, setLoading]   = useState(true);
   const [regenerating, setRegenerating] = useState(false);
-  const [adapting, setAdapting] = useState(false);
   const [adherence, setAdherence] = useState([]);
   const [ctx, setCtx]           = useState(null);
 
@@ -57,27 +56,6 @@ export default function MyPlanScreen({ user, onNavigate }) {
       Alert.alert('Error', e.message || 'Plan generation failed.');
     } finally {
       setRegenerating(false);
-    }
-  };
-
-  const adaptNow = async () => {
-    if (!plan) return;
-    try {
-      setAdapting(true);
-      const raw = await AsyncStorage.getItem(ONBOARDING_DATA_KEY);
-      const ob = raw ? JSON.parse(raw) : (plan.userProfile || {});
-      const fresh = await buildWeeklyContext(uid, plan);
-      const updated = await adaptPlan(plan, ob, fresh, user.email || user.uid);
-      if (updated) {
-        setPlan(updated);
-        setCtx(await buildWeeklyContext(uid, updated));
-      } else {
-        Alert.alert('Adaptation failed', 'Please try again in a moment.');
-      }
-    } catch (e) {
-      Alert.alert('Error', e.message || 'Adaptation failed.');
-    } finally {
-      setAdapting(false);
     }
   };
 
