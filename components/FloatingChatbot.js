@@ -219,9 +219,9 @@ const makeStyles = (C) => StyleSheet.create({
     position: 'absolute',
     right: 16,
     bottom: 88, // sits above BottomNav (64–80px on mobile)
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: C.green,
     alignItems: 'center',
     justifyContent: 'center',
@@ -234,7 +234,7 @@ const makeStyles = (C) => StyleSheet.create({
       ? { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }
       : {}),
   },
-  fabIcon: { width: 72, height: 72 },
+  fabIcon: { width: 50, height: 50 },
 
   backdrop: {
     flex: 1,
