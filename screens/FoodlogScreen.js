@@ -161,6 +161,24 @@ export default function FoodLogScreen({ user, onNavigate }) {
 
         {!loading && (
           <>
+            {/* AI Meal Studio CTA */}
+            <TouchableOpacity
+              onPress={() => onNavigate('mealstudio')}
+              activeOpacity={0.85}
+              style={s.studioCard}
+            >
+              <View style={s.studioBadge}>
+                <Text style={{ color: C.bg, fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>NEW</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.studioTitle}>✨ AI Meal Studio</Text>
+                <Text style={s.studioSub}>
+                  Cook from your pantry · Plan a week from groceries · Scan your fridge
+                </Text>
+              </View>
+              <Text style={s.studioArrow}>→</Text>
+            </TouchableOpacity>
+
             {/* Quick Add Form */}
             {showAdd && (
               <View style={s.addForm}>
@@ -448,6 +466,19 @@ const makeStyles = (C) => StyleSheet.create({
   dateArrowText: { color: C.white, fontWeight: '900', fontSize: 16 },
   dateLabel: { color: C.white, fontWeight: '800', fontSize: 15 },
   scroll: { padding: 16, paddingBottom: 40 },
+  studioCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card, borderRadius: 18, padding: 16, marginBottom: 14,
+    borderWidth: 1.5, borderColor: C.green + '60',
+    shadowColor: C.green, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.18, shadowRadius: 14,
+  },
+  studioBadge: {
+    backgroundColor: C.green, paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 6, marginRight: 12,
+  },
+  studioTitle: { color: C.white, fontSize: 16, fontWeight: '900', letterSpacing: 0.3 },
+  studioSub:   { color: C.muted, fontSize: 11, marginTop: 3, lineHeight: 15 },
+  studioArrow: { color: C.green, fontSize: 22, fontWeight: '900', marginLeft: 8 },
   addForm: { backgroundColor: C.card, borderRadius: 16, padding: 16, marginBottom: 16 },
   addFormTitle: { color: C.white, fontWeight: '900', fontSize: 15, marginBottom: 14 },
   label: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 6 },

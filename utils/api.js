@@ -32,10 +32,11 @@ export const callAI = async (systemPrompt, userMessage) => {
 };
 
 // Vision call - Groq supports vision via llama-4 scout
-export const callAIWithImage = async (base64Image, mimeType, userText) => {
+export const callAIWithImage = async (base64Image, mimeType, userText, systemPromptOverride) => {
   if (!GROQ_KEY) throw new Error('Missing EXPO_PUBLIC_GROQ_KEY in your .env file');
 
-  const systemText = 'You are a professional nutritionist with expert ability to identify food from photos. Return ONLY valid JSON with no markdown and no extra text. Use this exact structure: {"meal":"descriptive meal name","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"sugar":number,"sodium":number,"servingSize":"estimated portion","healthScore":number,"ingredients":["item1","item2"],"tips":["tip1","tip2"]}. All macros in grams. healthScore is 1-10.';
+  const defaultSystem = 'You are a professional nutritionist with expert ability to identify food from photos. Return ONLY valid JSON with no markdown and no extra text. Use this exact structure: {"meal":"descriptive meal name","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"sugar":number,"sodium":number,"servingSize":"estimated portion","healthScore":number,"ingredients":["item1","item2"],"tips":["tip1","tip2"]}. All macros in grams. healthScore is 1-10.';
+  const systemText = systemPromptOverride || defaultSystem;
 
   const userContent = [
     {
@@ -44,9 +45,11 @@ export const callAIWithImage = async (base64Image, mimeType, userText) => {
     },
     {
       type: 'text',
-      text: userText
-        ? 'Analyze this meal photo. Extra context: ' + userText
-        : 'Analyze this meal photo and return the nutrition facts.',
+      text: systemPromptOverride
+        ? (userText || 'Analyze this image as instructed.')
+        : (userText
+            ? 'Analyze this meal photo. Extra context: ' + userText
+            : 'Analyze this meal photo and return the nutrition facts.'),
     },
   ];
 

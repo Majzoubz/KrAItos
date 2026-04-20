@@ -33,4 +33,9 @@ export const KEYS = {
   WATER:     (uid, date)  => 'water_'   + cleanUid(uid) + '_' + date.replace(/ /g, '_'),
   FOODLOG:   (uid, date)  => 'foodlog_' + cleanUid(uid) + '_' + date.replace(/ /g, '_'),
   ADHERENCE: (uid)        => 'adherence_' + cleanUid(uid),
+  PANTRY:    (uid)        => 'pantry_'    + cleanUid(uid),
+  GROCERY:   (uid)        => 'grocery_'   + cleanUid(uid),
+  FRIDGE:    (uid)        => 'fridge_'    + cleanUid(uid),
+  SAVED_MEALS: (uid)      => 'savedmeals_'+ cleanUid(uid),
+  WEEKLY_PLAN: (uid)      => 'weekplan_'  + cleanUid(uid),
 };

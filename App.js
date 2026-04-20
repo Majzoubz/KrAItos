@@ -16,6 +16,7 @@ import MyPlanScreen        from './screens/MyPlanScreen';
 import TrackerScreen       from './screens/TrackerScreen';
 import ProgressScreen      from './screens/ProgressScreen';
 import HealthScreen        from './screens/HealthScreen';
+import MealStudioScreen    from './screens/MealStudioScreen';
 import ARScreen            from './screens/ARScreen';
 import ProfileScreen       from './screens/ProfileScreen';
 import SettingsScreen      from './screens/SettingsScreen';
@@ -28,7 +29,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const ONBOARDING_KEY = 'greengain_onboarding_complete';
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 const LEGACY_ONBOARDING_KEY = 'fitlife_onboarding_complete';
-const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile', 'settings', 'progress', 'health'];
+const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile', 'settings', 'progress', 'health', 'mealstudio'];
 
 function App() {
   const { C } = useTheme();
@@ -146,6 +147,7 @@ function App() {
       case 'tracker': return <TrackerScreen user={user} />;
       case 'progress': return <ProgressScreen user={user} onNavigate={navigate} />;
       case 'health':  return <HealthScreen user={user} onNavigate={navigate} />;
+      case 'mealstudio': return <MealStudioScreen user={user} onNavigate={navigate} />;
       case 'ar':      return <ARScreen />;
       case 'profile': return <ProfileScreen user={user} onLogout={handleLogout} onNavigate={navigate} />;
       case 'settings': return <SettingsScreen onNavigate={navigate} />;
