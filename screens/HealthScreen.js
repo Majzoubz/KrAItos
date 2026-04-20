@@ -10,7 +10,13 @@ import {
   isStepCountingAvailable, requestPedometerPermission,
   syncTodaySteps, subscribeSteps, stepsToActivityLevel,
 } from '../utils/health';
+import {
+  isAppleHealthAvailable, isHealthConnectAvailable,
+  connectAppleHealth, connectHealthConnect,
+  fetchTodayFromAppleHealth, fetchTodayFromHealthConnect,
+} from '../utils/wearables';
 import { tick as hTick, select as hSelect, success as hSuccess } from '../utils/haptics';
+import { LoadingState } from '../components/UI';
 
 const PROVIDERS = [
   { id: 'pedometer', name: 'Phone Pedometer', sub: 'iPhone / Android steps', icon: '👟', live: true },
@@ -285,15 +291,49 @@ export default function HealthScreen({ user, onNavigate }) {
     refresh();
   };
 
+  const connectApple = async () => {
+    hSelect();
+    const avail = await isAppleHealthAvailable();
+    if (!avail) {
+      showAlert('Apple Health',
+        "Reading live Apple Health data needs a custom Expo dev build with the react-native-health module. In Expo Go this isn't available. Run `eas build --profile development` after installing it, then come back and tap Connect.");
+      return;
+    }
+    setSyncing(true);
+    const r = await connectAppleHealth();
+    if (!r.ok) { setSyncing(false); showAlert('Apple Health', `Couldn't connect: ${r.reason || 'permission denied'}`); return; }
+    const data = await fetchTodayFromAppleHealth();
+    if (data) await saveHealthDay(uid, new Date(), { ...data, source: 'apple', syncedAt: Date.now() });
+    const np = await saveHealthProfile(uid, { provider: 'apple', autoSync: true, connectedAt: Date.now(), permissions: { apple: true } });
+    setProfile(np); setSyncing(false); hSuccess(); refresh();
+  };
+
+  const connectGoogle = async () => {
+    hSelect();
+    const avail = await isHealthConnectAvailable();
+    if (!avail) {
+      showAlert('Health Connect',
+        "Reading live Health Connect data needs a custom Expo dev build with the react-native-health-connect module. In Expo Go this isn't available. Run `eas build --profile development` after installing it, then come back and tap Connect.");
+      return;
+    }
+    setSyncing(true);
+    const r = await connectHealthConnect();
+    if (!r.ok) { setSyncing(false); showAlert('Health Connect', `Couldn't connect: ${r.reason || 'permission denied'}`); return; }
+    const data = await fetchTodayFromHealthConnect();
+    if (data) await saveHealthDay(uid, new Date(), { ...data, source: 'google', syncedAt: Date.now() });
+    const np = await saveHealthProfile(uid, { provider: 'google', autoSync: true, connectedAt: Date.now(), permissions: { google: true } });
+    setProfile(np); setSyncing(false); hSuccess(); refresh();
+  };
+
   const handleProvider = (p) => {
     if (p.id === 'pedometer') return connectPedometer();
+    if (p.id === 'apple') return connectApple();
+    if (p.id === 'google') return connectGoogle();
     if (p.soon) {
       hSelect();
       showAlert(
         `${p.name} integration`,
-        p.devBuild
-          ? `Reading live ${p.name} data requires a custom Expo dev build (Apple's HealthKit and Google Health Connect APIs aren't available in Expo Go). For now, log values manually below — the AI uses them the same way.`
-          : `${p.name} integration is on the roadmap. For now, log values manually below — the AI uses them for plan adaptation.`
+        `${p.name} integration is on the roadmap. For now, log values manually below — the AI uses them for plan adaptation.`
       );
       return;
     }
@@ -339,9 +379,7 @@ export default function HealthScreen({ user, onNavigate }) {
   if (loading) {
     return (
       <SafeAreaView style={s.safe}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={C.green} />
-        </View>
+        <LoadingState message="Loading your health data…" />
       </SafeAreaView>
     );
   }

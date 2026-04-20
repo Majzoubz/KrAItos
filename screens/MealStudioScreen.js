@@ -12,6 +12,7 @@ import {
   generateMealsFromFridge, extractItemsFromFridgePhoto,
 } from '../utils/mealAI';
 import { tick as hTick, select as hSelect, success as hSuccess } from '../utils/haptics';
+import { getRecipeImageUrl } from '../utils/recipeImages';
 
 const TABS = [
   { id: 'ingredients', label: 'Cook',     sub: 'From ingredients', icon: '🥘' },
@@ -79,12 +80,40 @@ function MacroPills({ p, c, f, kcal }) {
 
 function RecipeCard({ recipe, onAddToLog, onSave, saved }) {
   const { C } = useTheme();
+  const [imgUrl, setImgUrl] = React.useState(null);
+  const [imgFailed, setImgFailed] = React.useState(false);
+  React.useEffect(() => {
+    let cancelled = false;
+    setImgUrl(null); setImgFailed(false);
+    if (recipe?.name) {
+      getRecipeImageUrl(recipe).then(u => { if (!cancelled) setImgUrl(u); });
+    }
+    return () => { cancelled = true; };
+  }, [recipe?.name]);
   if (!recipe) return null;
   return (
     <View style={{
-      backgroundColor: C.card, borderRadius: 20, padding: 18,
+      backgroundColor: C.card, borderRadius: 20, padding: 0, overflow: 'hidden',
       borderWidth: 1, borderColor: C.green + '40', marginTop: 16,
     }}>
+      {imgUrl && !imgFailed ? (
+        <View style={{ width: '100%', height: 180, backgroundColor: C.surface }}>
+          <Image
+            source={{ uri: imgUrl }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+            onError={() => setImgFailed(true)}
+          />
+          <View style={{
+            position: 'absolute', top: 10, left: 10,
+            paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+          }}>
+            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 }}>AI PREVIEW</Text>
+          </View>
+        </View>
+      ) : null}
+      <View style={{ padding: 18 }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
         <View style={{ flex: 1 }}>
           {recipe.mealType && (
@@ -154,6 +183,7 @@ function RecipeCard({ recipe, onAddToLog, onSave, saved }) {
       >
         <Text style={{ color: C.bg, fontWeight: '900', letterSpacing: 1 }}>+ ADD TO TODAY'S LOG</Text>
       </TouchableOpacity>
+      </View>
     </View>
   );
 }

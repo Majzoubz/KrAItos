@@ -7,7 +7,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path as SvgPath, Circle as SvgCircle } from 'react-native-svg';
 import { useTheme } from '../theme/ThemeContext';
-import { Storage, KEYS } from '../utils/storage';
+import { Storage, KEYS, subscribeSyncStatus } from '../utils/storage';
+import { OfflineBanner } from './../components/UI';
 import { Auth } from '../utils/auth';
 import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
 import { scheduleMealReminders } from '../utils/notifications';
@@ -79,6 +80,8 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   const s = makeStyles(C);
   const [plan, setPlan]               = useState(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
+  const [syncQueued, setSyncQueued] = useState(0);
+  useEffect(() => subscribeSyncStatus(({ queued }) => setSyncQueued(queued)), []);
   const [generating, setGenerating]   = useState(false);
   const [genError, setGenError]       = useState(null);
   const [foodLog, setFoodLog]         = useState([]);
@@ -223,6 +226,8 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
         <DateStrip selectedIdx={6} onSelect={() => {}} today={today} />
 
         <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+
+          {syncQueued > 0 && <OfflineBanner queued={syncQueued} />}
 
           {/* Today's Score + 7-day streak ring */}
           {plan && (

@@ -5,7 +5,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
-import { setNotificationsEnabled, requestPermission, scheduleMealReminders } from '../utils/notifications';
+import {
+  setNotificationsEnabled, requestPermission,
+  scheduleSmartReminders, getCategoryPrefs, setCategoryPref,
+} from '../utils/notifications';
 import { Storage, KEYS } from '../utils/storage';
 import { Auth } from '../utils/auth';
 const SETTINGS_KEY = 'greengain_settings';
@@ -37,6 +40,7 @@ export default function SettingsScreen({ onNavigate }) {
   const [loaded, setLoaded] = useState(false);
   const [showLang, setShowLang] = useState(false);
   const [showUnits, setShowUnits] = useState(false);
+  const [catPrefs, setCatPrefs] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -44,9 +48,27 @@ export default function SettingsScreen({ onNavigate }) {
         const raw = await AsyncStorage.getItem(SETTINGS_KEY);
         if (raw) setSettings({ ...DEFAULTS, ...JSON.parse(raw) });
       } catch {}
+      try { setCatPrefs(await getCategoryPrefs()); } catch {}
       setLoaded(true);
     })();
   }, []);
+
+  const reschedule = async () => {
+    try {
+      const u = await Auth.getCurrentUser();
+      if (!u) return;
+      const plan = await Storage.get(KEYS.PLAN(u.email || u.uid));
+      if (plan) await scheduleSmartReminders(plan);
+    } catch {}
+  };
+
+  const updateCat = async (cat, value) => {
+    if (!catPrefs) return;
+    const next = { ...catPrefs, [cat]: value };
+    setCatPrefs(next);
+    try { await setCategoryPref(cat, value); } catch {}
+    if (settings.notifications && settings.reminders) reschedule();
+  };
 
   const update = async (key, value) => {
     const next = { ...settings, [key]: value };
@@ -179,7 +201,7 @@ export default function SettingsScreen({ onNavigate }) {
                       const u = await Auth.getCurrentUser();
                       if (u) {
                         const plan = await Storage.get(KEYS.PLAN(u.email || u.uid));
-                        if (plan?.mealPlan) await scheduleMealReminders(plan.mealPlan, { force: true });
+                        if (plan) await scheduleSmartReminders(plan, { force: true });
                       }
                     } catch {}
                   } else {
@@ -192,6 +214,37 @@ export default function SettingsScreen({ onNavigate }) {
               />
             </View>
           </View>
+
+          {catPrefs && settings.notifications && settings.reminders && (
+            <>
+              <Text style={s.sectionLabel}>WHAT TO REMIND ME ABOUT</Text>
+              <View style={s.card}>
+                {[
+                  { k: 'meals',       title: 'Meal times',       sub: 'A nudge 15 min before each scheduled meal' },
+                  { k: 'water',       title: 'Hydration',        sub: 'Hourly water reminders 9am–9pm' },
+                  { k: 'dinnerCheck', title: 'Daily log check',  sub: '8pm: did you log dinner?' },
+                  { k: 'workout',     title: 'Workouts',         sub: '30 min before each scheduled workout' },
+                  { k: 'weekly',      title: 'Weekly review',    sub: 'Sunday morning recap of your week' },
+                ].map((c, i, arr) => (
+                  <React.Fragment key={c.k}>
+                    <View style={s.row}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.rowTitle}>{c.title}</Text>
+                        <Text style={s.rowSub}>{c.sub}</Text>
+                      </View>
+                      <Switch
+                        value={!!catPrefs[c.k]}
+                        onValueChange={(v) => updateCat(c.k, v)}
+                        trackColor={{ false: C.surface, true: C.green }}
+                        thumbColor={C.white}
+                      />
+                    </View>
+                    {i < arr.length - 1 && <View style={s.divider} />}
+                  </React.Fragment>
+                ))}
+              </View>
+            </>
+          )}
 
           <Text style={s.sectionLabel}>ABOUT</Text>
           <View style={s.card}>

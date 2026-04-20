@@ -1,6 +1,106 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+
+export function LoadingState({ message, compact }) {
+  const { C } = useTheme();
+  return (
+    <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: compact ? 24 : 60 }}>
+      <ActivityIndicator color={C.green} size={compact ? 'small' : 'large'} />
+      {message ? (
+        <Text style={{ color: C.muted, fontSize: 13, fontWeight: '600', marginTop: 12, textAlign: 'center' }}>
+          {message}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+export function EmptyState({ icon, title, body, actionLabel, onAction }) {
+  const { C } = useTheme();
+  return (
+    <View style={{
+      alignItems: 'center', paddingVertical: 36, paddingHorizontal: 24,
+      backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border,
+    }}>
+      {icon ? (
+        <View style={{
+          width: 64, height: 64, borderRadius: 32, backgroundColor: C.green + '18',
+          alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+        }}>
+          <Text style={{ fontSize: 28 }}>{icon}</Text>
+        </View>
+      ) : null}
+      {title ? (
+        <Text style={{ color: C.white, fontSize: 17, fontWeight: '900', textAlign: 'center', marginBottom: 6 }}>
+          {title}
+        </Text>
+      ) : null}
+      {body ? (
+        <Text style={{ color: C.muted, fontSize: 13, lineHeight: 20, textAlign: 'center', marginBottom: actionLabel ? 18 : 0 }}>
+          {body}
+        </Text>
+      ) : null}
+      {actionLabel && onAction ? (
+        <TouchableOpacity
+          onPress={onAction}
+          style={{ backgroundColor: C.green, paddingVertical: 12, paddingHorizontal: 22, borderRadius: 12 }}
+        >
+          <Text style={{ color: C.bg, fontWeight: '900', letterSpacing: 0.5 }}>{actionLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
+export function ErrorState({ title = 'Something went wrong', body, onRetry, retryLabel = 'Try again' }) {
+  const { C } = useTheme();
+  return (
+    <View style={{
+      alignItems: 'center', paddingVertical: 28, paddingHorizontal: 22,
+      backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: '#FF555555',
+    }}>
+      <View style={{
+        width: 56, height: 56, borderRadius: 28, backgroundColor: '#FF555518',
+        alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+      }}>
+        <Text style={{ fontSize: 24 }}>⚠️</Text>
+      </View>
+      <Text style={{ color: C.white, fontSize: 16, fontWeight: '900', textAlign: 'center', marginBottom: 6 }}>{title}</Text>
+      {body ? (
+        <Text style={{ color: C.muted, fontSize: 13, lineHeight: 20, textAlign: 'center', marginBottom: onRetry ? 14 : 0 }}>
+          {body}
+        </Text>
+      ) : null}
+      {onRetry ? (
+        <TouchableOpacity onPress={onRetry} style={{
+          backgroundColor: C.surface, paddingVertical: 11, paddingHorizontal: 22, borderRadius: 10,
+          borderWidth: 1, borderColor: C.green,
+        }}>
+          <Text style={{ color: C.green, fontWeight: '800' }}>{retryLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
+export function OfflineBanner({ queued }) {
+  const { C } = useTheme();
+  if (!queued) return null;
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: '#FF8A0022', borderColor: '#FF8A0055', borderWidth: 1,
+      borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 10,
+    }}>
+      <Text style={{ fontSize: 14, marginRight: 8 }}>⏳</Text>
+      <Text style={{ color: C.white, fontSize: 12, fontWeight: '700', flex: 1 }}>
+        Offline — {queued} change{queued === 1 ? '' : 's'} waiting to sync.
+      </Text>
+    </View>
+  );
+}
+
 export function Field({ label, ...props }) {
   const { C } = useTheme();
   const s = makeStyles(C);

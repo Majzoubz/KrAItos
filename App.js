@@ -5,7 +5,7 @@ import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Image, Pla
 import { Auth } from './utils/auth';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { isWideWeb } from './utils/platform';
-import { Storage, KEYS } from './utils/storage';
+import { Storage, KEYS, initStorage } from './utils/storage';
 import WelcomeScreen       from './screens/WelcomeScreen';
 import OnboardingScreen    from './screens/OnboardingScreen';
 import AuthScreen          from './screens/AuthScreen';
@@ -42,6 +42,8 @@ function App() {
   const [screenParams, setScreenParams] = useState(null);
   const [user, setUser]     = useState(null);
   const [error, setError]   = useState(null);
+
+  useEffect(() => { initStorage(); }, []);
 
   useEffect(() => {
     const MIN_SPLASH_MS = 2200;

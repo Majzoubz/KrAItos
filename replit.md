@@ -42,7 +42,10 @@ utils/
   health.js / health.impl.web.js / health.impl.native.js  # Cross-platform health data: pedometer (expo-sensors) on native, manual entry everywhere; AsyncStorage daily snapshots; getHealthSummary + stepsToActivityLevel
   planAdapter.js    # buildWeeklyContext (weight slope, calorie/protein adherence, session %),
                     # shouldAutoAdapt gating, logSession for workout adherence tracking
-  storage.js        # Firestore data storage (KEYS includes ADHERENCE log)
+  storage.js        # Cache-first storage: AsyncStorage cache + Firestore + offline outbox with exponential backoff. Exports initStorage, flushOutbox, subscribeSyncStatus, isOnline.
+  notifications.js / .impl.native.js / .impl.web.js  # Multi-category scheduler: meals, water (9–9), dinnerCheck (8pm), workout (-30min), weekly Sun 9am. scheduleSmartReminders + per-category prefs.
+  recipeImages.js   # Pollinations.ai image URLs cached by dish name (no API key).
+  wearables.js      # Apple Health (iOS) + Health Connect (Android) dynamic imports — needs dev build, gracefully unavailable in Expo Go.
   platform.js       # Platform detection helpers
 constants/
   theme.js          # Color palette & design tokens (lime green #7FFF00)

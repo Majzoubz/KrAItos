@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SCHEDULE_KEY = 'greengain_notification_ids';
+const SCHEDULE_KEY = 'greengain_notification_ids_v2';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -11,6 +11,14 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+async function readIds() {
+  try { const raw = await AsyncStorage.getItem(SCHEDULE_KEY); return raw ? JSON.parse(raw) : []; }
+  catch { return []; }
+}
+async function writeIds(list) {
+  try { await AsyncStorage.setItem(SCHEDULE_KEY, JSON.stringify(list)); } catch {}
+}
 
 export async function hasPermission() {
   try {
@@ -29,39 +37,71 @@ export async function requestPermission() {
 }
 
 export async function cancelAll() {
-  try {
-    const raw = await AsyncStorage.getItem(SCHEDULE_KEY);
-    const ids = raw ? JSON.parse(raw) : [];
-    for (const id of ids) {
-      try { await Notifications.cancelScheduledNotificationAsync(id); } catch {}
-    }
-  } catch {}
-  try { await AsyncStorage.removeItem(SCHEDULE_KEY); } catch {}
+  const list = await readIds();
+  for (const r of list) {
+    try { await Notifications.cancelScheduledNotificationAsync(r.id); } catch {}
+  }
+  await writeIds([]);
+}
+
+export async function cancelByCategory(category) {
+  const list = await readIds();
+  const remain = [];
+  for (const r of list) {
+    if (r.category === category) {
+      try { await Notifications.cancelScheduledNotificationAsync(r.id); } catch {}
+    } else remain.push(r);
+  }
+  await writeIds(remain);
+}
+
+function buildTrigger(r) {
+  const T = Notifications.SchedulableTriggerInputTypes;
+  if (r.weekday) {
+    return {
+      type: T?.WEEKLY ?? 'weekly',
+      weekday: r.weekday, // 1..7 (1 = Sunday)
+      hour: r.hour, minute: r.minute,
+    };
+  }
+  return {
+    type: T?.DAILY ?? 'daily',
+    hour: r.hour, minute: r.minute,
+  };
 }
 
 export async function scheduleAll(reminders /*, mealPlan */) {
-  const ids = [];
+  const ids = await readIds();
+  let count = 0;
   for (const r of reminders) {
     try {
       const id = await Notifications.scheduleNotificationAsync({
         content: { title: r.title, body: r.body, sound: 'default' },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes?.DAILY ?? 'daily',
-          hour: r.hour,
-          minute: r.minute,
-        },
+        trigger: buildTrigger(r),
       });
-      ids.push(id);
-    } catch (e) {
+      ids.push({ id, category: r.category || 'meals' });
+      count++;
+    } catch {
       try {
         const id = await Notifications.scheduleNotificationAsync({
           content: { title: r.title, body: r.body, sound: 'default' },
           trigger: { hour: r.hour, minute: r.minute, repeats: true },
         });
-        ids.push(id);
+        ids.push({ id, category: r.category || 'meals' });
+        count++;
       } catch {}
     }
   }
-  try { await AsyncStorage.setItem(SCHEDULE_KEY, JSON.stringify(ids)); } catch {}
-  return { scheduled: ids.length };
+  await writeIds(ids);
+  return { scheduled: count };
+}
+
+export async function scheduleOneShot({ title, body, seconds = 5 }) {
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: { title, body, sound: 'default' },
+      trigger: { seconds: Math.max(1, seconds) },
+    });
+    return { id };
+  } catch { return null; }
 }
