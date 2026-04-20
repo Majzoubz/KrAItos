@@ -198,12 +198,12 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
                 </>
               ) : genError === 'missing' ? (
                 <>
-                  <Text style={s.emptyTitle}>Tell us about you</Text>
+                  <Text style={s.emptyTitle}>Sign-up details missing</Text>
                   <Text style={s.emptyDesc}>
-                    We need your sign-up details to build your plan. Open the AI Coach to enter them.
+                    We couldn't find your sign-up answers. Tap below and we'll try to build your plan again.
                   </Text>
-                  <TouchableOpacity style={s.emptyBtn} onPress={() => onNavigate('coach')}>
-                    <Text style={s.emptyBtnText}>Open AI Coach</Text>
+                  <TouchableOpacity style={s.emptyBtn} onPress={tryAutoGenerate}>
+                    <Text style={s.emptyBtnText}>Try Again</Text>
                   </TouchableOpacity>
                 </>
               ) : (

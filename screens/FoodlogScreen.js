@@ -275,8 +275,8 @@ export default function FoodLogScreen({ user, onNavigate }) {
 
             {/* No plan warning */}
             {!plan && (
-              <TouchableOpacity style={s.noPlanBanner} onPress={() => onNavigate('coach')}>
-                <Text style={s.noPlanText}>No plan set - targets are estimates. Generate your plan for accurate targets.</Text>
+              <TouchableOpacity style={s.noPlanBanner} onPress={() => onNavigate('home')}>
+                <Text style={s.noPlanText}>No plan yet - targets are estimates. Tap to generate your plan.</Text>
               </TouchableOpacity>
             )}
 

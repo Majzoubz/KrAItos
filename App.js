@@ -12,21 +12,19 @@ import AuthScreen          from './screens/AuthScreen';
 import HomeScreen          from './screens/HomeScreen';
 import FoodScannerScreen   from './screens/FoodScannerScreen';
 import FoodLogScreen       from './screens/FoodlogScreen';
-import AICoachScreen       from './screens/AICoachScreen';
 import MyPlanScreen        from './screens/MyPlanScreen';
 import TrackerScreen       from './screens/TrackerScreen';
 import ARScreen            from './screens/ARScreen';
 import ProfileScreen       from './screens/ProfileScreen';
 import BottomNav           from './components/BottomNav';
 import WebLayout           from './components/WebLayout';
-import FloatingChatButton  from './components/FloatingChatButton';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ONBOARDING_KEY = 'greengain_onboarding_complete';
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 const LEGACY_ONBOARDING_KEY = 'fitlife_onboarding_complete';
-const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'coach', 'tracker', 'ar', 'profile'];
+const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile'];
 
 function App() {
   const [screen, setScreen] = useState('loading');
@@ -136,7 +134,6 @@ function App() {
       case 'scanner': return <FoodScannerScreen user={user} onUserUpdate={updateUser} onAddToLog={() => navigate('foodlog')} />;
       case 'foodlog': return <FoodLogScreen user={user} onNavigate={navigate} />;
       case 'plan':    return <MyPlanScreen user={user} onNavigate={navigate} />;
-      case 'coach':   return <AICoachScreen user={user} onUserUpdate={updateUser} onPlanSaved={() => navigate('plan')} />;
       case 'tracker': return <TrackerScreen user={user} />;
       case 'ar':      return <ARScreen />;
       case 'profile': return <ProfileScreen user={user} onLogout={handleLogout} onNavigate={navigate} />;
@@ -150,7 +147,6 @@ function App() {
     return (
       <WebLayout current={screen} onNavigate={navigate} user={user}>
         {renderScreen()}
-        <FloatingChatButton onPress={() => navigate('coach')} currentScreen={screen} />
       </WebLayout>
     );
   }
@@ -158,7 +154,6 @@ function App() {
   return (
     <View style={s.root}>
       <View style={s.content}>{renderScreen()}</View>
-      {isAuthed && <FloatingChatButton onPress={() => navigate('coach')} currentScreen={screen} />}
       {isAuthed && <BottomNav current={screen} onNavigate={navigate} />}
     </View>
   );

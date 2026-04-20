@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { screen: 'foodlog', label: 'Food Log',      icon: '☰' },
   { screen: 'tracker', label: 'Tracker',       icon: '◈' },
   { screen: 'plan',    label: 'My Plan',       icon: '◇' },
-  { screen: 'coach',   label: 'AI Coach',      icon: '○' },
   { screen: 'profile', label: 'Profile',       icon: '●' },
 ];
 

@@ -37,10 +37,10 @@ export default function MyPlanScreen({ user, onNavigate }) {
           <View style={s.emptyIcon}><Text style={s.emptyIconText}>⚡</Text></View>
           <Text style={s.emptyTitle}>No plan yet</Text>
           <Text style={s.emptyText}>
-            Head to the AI Coach to generate your personalized nutrition and workout plan.
+            Head back to the Home screen — your plan will generate automatically from your sign-up answers.
           </Text>
-          <TouchableOpacity style={s.goBtn} onPress={() => onNavigate('coach')}>
-            <Text style={s.goBtnText}>Go to AI Coach</Text>
+          <TouchableOpacity style={s.goBtn} onPress={() => onNavigate('home')}>
+            <Text style={s.goBtnText}>Go to Home</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -195,9 +195,6 @@ export default function MyPlanScreen({ user, onNavigate }) {
           </>
         )}
 
-        <TouchableOpacity style={s.updateBtn} onPress={() => onNavigate('coach')}>
-          <Text style={s.updateBtnText}>Update My Plan</Text>
-        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>

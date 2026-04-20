@@ -7,7 +7,7 @@ const TABS = [
   { screen: 'scanner', label: 'Scanner', icon: '◎' },
   { screen: 'foodlog', label: 'Log',     icon: '☰' },
   { screen: 'plan',    label: 'Plan',    icon: '◈' },
-  { screen: 'coach',   label: 'Coach',   icon: '◇' },
+  { screen: 'profile', label: 'Profile', icon: '◇' },
 ];
 
 export default function BottomNav({ current, onNavigate }) {
