@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, TextInput, SafeAreaView,
-  ScrollView, Alert, Image, Modal, Platform, Dimensions,
+  ScrollView, Alert, Image, Modal, Platform, Dimensions, ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme/ThemeContext';
@@ -35,6 +35,8 @@ export default function MeasurementsScreen({ user, onNavigate }) {
   const [compare, setCompare] = useState({ a: null, b: null });
   const [pickerLabel, setPickerLabel] = useState(null); // string when picking compare slot
   const [actionSheet, setActionSheet] = useState(null); // { title, actions: [{label, onPress, destructive}] }
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const openActions = (title, actions) => setActionSheet({ title, actions });
   const closeActions = () => setActionSheet(null);
 
@@ -53,21 +55,42 @@ export default function MeasurementsScreen({ user, onNavigate }) {
   const previous = history[history.length - 2] || null;
 
   const saveAdd = async () => {
-    const hasAny = FIELDS.some(f => addDraft[f.key] && parseFloat(addDraft[f.key]));
-    if (!hasAny) { Alert.alert('Enter at least one value'); return; }
+    setSaveError(null);
     const entry = {
       date: new Date().toISOString().slice(0, 10),
       timestamp: Date.now(),
     };
+    let count = 0;
     FIELDS.forEach(f => {
-      const v = parseFloat(addDraft[f.key]);
-      if (!isNaN(v)) entry[f.key] = v;
+      const raw = (addDraft[f.key] || '').trim();
+      if (!raw) return;
+      const v = parseFloat(raw);
+      if (!isNaN(v) && v > 0) { entry[f.key] = v; count += 1; }
     });
+    if (count === 0) {
+      setSaveError('Enter at least one number above.');
+      return;
+    }
+    setSaving(true);
     const next = [...history, entry].slice(-200);
-    await Storage.set(KEYS.MEASUREMENTS(uid), next);
-    setHistory(next);
-    setAddDraft({});
+    try {
+      const ok = await Storage.set(KEYS.MEASUREMENTS(uid), next);
+      if (ok === false) throw new Error('Could not save to cloud. Check your connection.');
+      setHistory(next);
+      setAddDraft({});
+      setShowAdd(false);
+    } catch (e) {
+      setSaveError(e.message || 'Save failed. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const closeAdd = () => {
+    if (saving) return;
     setShowAdd(false);
+    setAddDraft({});
+    setSaveError(null);
   };
 
   const deleteEntry = (timestamp) => {
@@ -254,11 +277,12 @@ export default function MeasurementsScreen({ user, onNavigate }) {
       </ScrollView>
 
       {/* Add measurement modal */}
-      <Modal visible={showAdd} transparent animationType="slide" onRequestClose={() => setShowAdd(false)}>
-        <View style={s.modalBackdrop}>
-          <View style={s.modalSheet}>
+      <Modal visible={showAdd} transparent animationType="slide" onRequestClose={closeAdd}>
+        <TouchableOpacity activeOpacity={1} style={s.modalBackdrop} onPress={closeAdd}>
+          <TouchableOpacity activeOpacity={1} style={s.modalSheet} onPress={() => {}}>
             <Text style={s.modalTitle}>Add Measurement</Text>
-            <ScrollView style={{ maxHeight: 380 }}>
+            <Text style={s.modalHint}>Fill in just the values you want to log — leave the rest blank.</Text>
+            <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
               {FIELDS.map(f => (
                 <View key={f.key} style={s.modalRow}>
                   <Text style={s.modalLabel}>{f.icon} {f.label}</Text>
@@ -266,26 +290,35 @@ export default function MeasurementsScreen({ user, onNavigate }) {
                     <TextInput
                       style={s.modalInput}
                       value={addDraft[f.key] || ''}
-                      onChangeText={(v) => setAddDraft(d => ({ ...d, [f.key]: v.replace(/[^0-9.]/g, '') }))}
-                      placeholder={String(latest[f.key] || '0')}
+                      onChangeText={(v) => {
+                        const cleaned = v.replace(',', '.').replace(/[^0-9.]/g, '');
+                        const single = cleaned.split('.').slice(0, 2).join('.');
+                        setAddDraft(d => ({ ...d, [f.key]: single }));
+                        if (saveError) setSaveError(null);
+                      }}
+                      placeholder={latest[f.key] != null ? `last: ${latest[f.key]}` : '0'}
                       placeholderTextColor={C.muted}
-                      keyboardType="decimal-pad"
+                      keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
+                      inputMode="decimal"
                     />
                     <Text style={s.modalUnit}>{f.unit}</Text>
                   </View>
                 </View>
               ))}
             </ScrollView>
+            {saveError && <Text style={s.errorText}>{saveError}</Text>}
             <View style={s.modalBtnRow}>
-              <TouchableOpacity style={[s.modalBtn, s.modalBtnGhost]} onPress={() => { setShowAdd(false); setAddDraft({}); }}>
+              <TouchableOpacity style={[s.modalBtn, s.modalBtnGhost]} onPress={closeAdd} disabled={saving}>
                 <Text style={s.modalBtnGhostText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.modalBtn} onPress={saveAdd}>
-                <Text style={s.modalBtnText}>Save</Text>
+              <TouchableOpacity style={[s.modalBtn, saving && { opacity: 0.6 }]} onPress={saveAdd} disabled={saving}>
+                {saving
+                  ? <ActivityIndicator color={C.bg} />
+                  : <Text style={s.modalBtnText}>Save</Text>}
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Cross-platform action sheet */}
@@ -416,7 +449,9 @@ const makeStyles = (C) => StyleSheet.create({
 
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 16 },
   modalSheet: { backgroundColor: C.bg, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: C.border },
-  modalTitle: { color: C.white, fontSize: 18, fontWeight: '900', marginBottom: 14 },
+  modalTitle: { color: C.white, fontSize: 18, fontWeight: '900', marginBottom: 4 },
+  modalHint: { color: C.muted, fontSize: 12, marginBottom: 12 },
+  errorText: { color: C.danger || '#FF5555', fontSize: 12, fontWeight: '700', marginTop: 6, textAlign: 'center' },
   modalRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   modalLabel: { color: C.white, flex: 1, fontSize: 13, fontWeight: '700' },
   modalInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: C.border, width: 120 },
