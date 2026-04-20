@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { select as hSelect } from '../utils/haptics';
 const TABS = [
   { screen: 'home',    label: 'Home',      icon: '🏠' },
   { screen: 'plan',    label: 'Training',  icon: '🏋️' },
@@ -21,7 +22,7 @@ export default function BottomNav({ current, onNavigate }) {
             <TouchableOpacity
               key={tab.screen}
               style={s.tab}
-              onPress={() => onNavigate(tab.screen)}
+              onPress={() => { if (current !== tab.screen) hSelect(); onNavigate(tab.screen); }}
               activeOpacity={0.7}
             >
               <View style={[s.iconBox, active && s.iconBoxActive]}>

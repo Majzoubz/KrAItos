@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
   TextInput, Animated, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { tick as hTick, select as hSelect, success as hSuccess } from '../utils/haptics';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -28,37 +29,26 @@ const ageFrom = (d, mo, y) => {
 function WheelColumn({ items, value, onChange, width = 70, itemHeight = 44, formatItem }) {
   const { C } = useTheme();
   const ref = useRef(null);
-  const [scrollIdx, setScrollIdx] = useState(Math.max(0, items.indexOf(value)));
-  const lastSyncedValue = useRef(value);
+  const initialIdx = Math.max(0, items.indexOf(value));
+  const [scrollIdx, setScrollIdx] = useState(initialIdx);
+  const lastIdxRef = useRef(initialIdx);
 
   useEffect(() => {
-    const idx = Math.max(0, items.indexOf(value));
-    setScrollIdx(idx);
-    if (lastSyncedValue.current !== value) {
-      lastSyncedValue.current = value;
-      requestAnimationFrame(() => {
-        ref.current?.scrollTo({ y: idx * itemHeight, animated: false });
-      });
-    }
-  }, [value, items.length]);
-
-  useEffect(() => {
-    const idx = Math.max(0, items.indexOf(value));
-    requestAnimationFrame(() => {
-      ref.current?.scrollTo({ y: idx * itemHeight, animated: false });
-    });
+    const t = setTimeout(() => {
+      ref.current?.scrollTo({ y: initialIdx * itemHeight, animated: false });
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
 
   const onScroll = (e) => {
     const y = e.nativeEvent.contentOffset.y;
     const i = Math.max(0, Math.min(items.length - 1, Math.round(y / itemHeight)));
-    if (i !== scrollIdx) setScrollIdx(i);
-  };
-  const onEnd = (e) => {
-    const y = e.nativeEvent.contentOffset.y;
-    const i = Math.max(0, Math.min(items.length - 1, Math.round(y / itemHeight)));
-    lastSyncedValue.current = items[i];
-    if (items[i] !== value) onChange(items[i]);
+    if (i !== lastIdxRef.current) {
+      lastIdxRef.current = i;
+      setScrollIdx(i);
+      onChange(items[i]);
+      hTick();
+    }
   };
 
   return (
@@ -70,8 +60,6 @@ function WheelColumn({ items, value, onChange, width = 70, itemHeight = 44, form
         decelerationRate="fast"
         scrollEventThrottle={16}
         onScroll={onScroll}
-        onMomentumScrollEnd={onEnd}
-        onScrollEndDrag={onEnd}
         contentContainerStyle={{ paddingVertical: itemHeight * 2 }}
       >
         {items.map((it, i) => {
@@ -178,11 +166,11 @@ function RulerPicker({ min, max, step = 1, value, unit, decimals = 0, onChange, 
   const ref = useRef(null);
   const [containerW, setContainerW] = useState(0);
 
-  const ticks = useRef((() => {
+  const ticks = useMemo(() => {
     const arr = [];
     for (let i = min; i <= max + 1e-9; i += step) arr.push(+i.toFixed(decimals + 2));
     return arr;
-  })()).current;
+  }, [min, max, step, decimals]);
 
   const v = parseFloat(value);
   const initial = !isNaN(v)
@@ -192,6 +180,7 @@ function RulerPicker({ min, max, step = 1, value, unit, decimals = 0, onChange, 
     Math.round((initial - min) / step)
   ));
   const [display, setDisplay] = useState(ticks[initialIdx]);
+  const lastIdxRef = useRef(initialIdx);
   const didInit = useRef(false);
 
   useEffect(() => {
@@ -205,12 +194,12 @@ function RulerPicker({ min, max, step = 1, value, unit, decimals = 0, onChange, 
   const onScroll = (e) => {
     const x = e.nativeEvent.contentOffset.x;
     const i = Math.max(0, Math.min(ticks.length - 1, Math.round(x / TICK_W)));
-    if (ticks[i] !== display) setDisplay(ticks[i]);
-  };
-  const onEnd = (e) => {
-    const x = e.nativeEvent.contentOffset.x;
-    const i = Math.max(0, Math.min(ticks.length - 1, Math.round(x / TICK_W)));
-    onChange(String(ticks[i]));
+    if (i !== lastIdxRef.current) {
+      lastIdxRef.current = i;
+      setDisplay(ticks[i]);
+      onChange(String(ticks[i]));
+      hTick();
+    }
   };
 
   return (
@@ -238,8 +227,6 @@ function RulerPicker({ min, max, step = 1, value, unit, decimals = 0, onChange, 
             decelerationRate="fast"
             scrollEventThrottle={16}
             onScroll={onScroll}
-            onMomentumScrollEnd={onEnd}
-            onScrollEndDrag={onEnd}
             contentContainerStyle={{ paddingHorizontal: containerW / 2 - TICK_W / 2 }}
           >
             {ticks.map((t, i) => {
@@ -395,7 +382,7 @@ function BuildingScreen({ onDone, data, userEmail }) {
   }, []);
 
   useEffect(() => {
-    if (apiDone && animDone) onDone();
+    if (apiDone && animDone) { hSuccess(); onDone(); }
   }, [apiDone, animDone]);
 
   return (
@@ -461,6 +448,7 @@ export default function OnboardingScreen({ onComplete, user }) {
   };
 
   const goNext = () => {
+    hSelect();
     if (step < totalSteps - 1) {
       const nextSection = STEPS[step + 1].section;
       if (nextSection !== currentStep.section) {
@@ -479,7 +467,11 @@ export default function OnboardingScreen({ onComplete, user }) {
 
   const updateField = (key, value) => setData(prev => ({ ...prev, [key]: value }));
 
+  const TAP_FIELDS = new Set(['gender','units','bodyFat','exerciseFreq','proteinIntake','weeklyRate','goal','diet','calDistribution','activityLevel','trainingExp','cardioExp','weightTrend']);
+  const tapField = (key, value) => { hSelect(); updateField(key, value); };
+
   const toggleMulti = (key, value) => {
+    hSelect();
     setData(prev => {
       const arr = prev[key] || [];
       return { ...prev, [key]: arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value] };
@@ -540,7 +532,7 @@ export default function OnboardingScreen({ onComplete, user }) {
               <TouchableOpacity
                 key={g.val}
                 style={[s.bigCard, data.gender === g.val && s.bigCardActive]}
-                onPress={() => updateField('gender', g.val)}
+                onPress={() => tapField('gender', g.val)}
               >
                 <Text style={[s.bigCardIcon, data.gender === g.val && { color: C.green }]}>{g.icon}</Text>
                 <Text style={[s.bigCardLabel, data.gender === g.val && s.bigCardLabelActive]}>{g.val}</Text>
@@ -560,7 +552,7 @@ export default function OnboardingScreen({ onComplete, user }) {
               <TouchableOpacity
                 key={u.val}
                 style={[s.bigCard, data.units === u.val && s.bigCardActive]}
-                onPress={() => updateField('units', u.val)}
+                onPress={() => tapField('units', u.val)}
               >
                 <Text style={[s.bigCardLabel, data.units === u.val && s.bigCardLabelActive]}>{u.val}</Text>
                 <Text style={s.bigCardDesc}>{u.desc}</Text>
@@ -572,6 +564,7 @@ export default function OnboardingScreen({ onComplete, user }) {
       case 'birthday':
         return (
           <DateOfBirthPicker
+            key="dob"
             value={data.birthday}
             onChange={(v) => updateField('birthday', v)}
           />
@@ -584,6 +577,7 @@ export default function OnboardingScreen({ onComplete, user }) {
             : NaN;
           return (
             <RulerPicker
+              key="height-imperial"
               min={48}
               max={86}
               step={1}
@@ -604,6 +598,7 @@ export default function OnboardingScreen({ onComplete, user }) {
         }
         return (
           <RulerPicker
+            key="height-metric"
             min={120}
             max={220}
             step={1}
@@ -627,6 +622,7 @@ export default function OnboardingScreen({ onComplete, user }) {
           : (isMetric ? 70 : 155);
         return (
           <RulerPicker
+            key={`${id}-${isMetric ? 'm' : 'i'}`}
             min={min}
             max={max}
             step={1}
@@ -661,7 +657,7 @@ export default function OnboardingScreen({ onComplete, user }) {
               <TouchableOpacity
                 key={bf.val}
                 style={[s.optionCard, data.bodyFat === bf.val && s.optionCardActive]}
-                onPress={() => updateField('bodyFat', bf.val)}
+                onPress={() => tapField('bodyFat', bf.val)}
               >
                 <View style={s.bfBarWrap}>
                   {Array.from({ length: 7 }).map((_, i) => (
@@ -712,7 +708,7 @@ export default function OnboardingScreen({ onComplete, user }) {
               <TouchableOpacity
                 key={n}
                 style={[s.freqBtn, data.exerciseFreq === n && s.freqBtnActive]}
-                onPress={() => updateField('exerciseFreq', n)}
+                onPress={() => tapField('exerciseFreq', n)}
               >
                 <Text style={[s.freqNum, data.exerciseFreq === n && s.freqNumActive]}>{n}</Text>
                 <Text style={[s.freqLabel, data.exerciseFreq === n && { color: C.green }]}>
@@ -793,7 +789,7 @@ export default function OnboardingScreen({ onComplete, user }) {
               <TouchableOpacity
                 key={p.val}
                 style={[s.optionCard, data.proteinIntake === p.val && s.optionCardActive]}
-                onPress={() => updateField('proteinIntake', p.val)}
+                onPress={() => tapField('proteinIntake', p.val)}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[s.optionText, data.proteinIntake === p.val && s.optionTextActive]}>{p.label}</Text>
@@ -829,7 +825,7 @@ export default function OnboardingScreen({ onComplete, user }) {
           <TouchableOpacity
             key={r.val}
             style={[s.optionCard, data.weeklyRate === r.val && s.optionCardActive]}
-            onPress={() => updateField('weeklyRate', r.val)}
+            onPress={() => tapField('weeklyRate', r.val)}
           >
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -851,7 +847,7 @@ export default function OnboardingScreen({ onComplete, user }) {
         <TouchableOpacity
           key={opt.val}
           style={[s.optionCard, data[field] === opt.val && s.optionCardActive]}
-          onPress={() => updateField(field, opt.val)}
+          onPress={() => tapField(field, opt.val)}
         >
           <View style={s.optIconWrap}>
             <Text style={[s.optIcon, data[field] === opt.val && { color: C.green }]}>{opt.icon}</Text>
