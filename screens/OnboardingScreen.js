@@ -4,6 +4,280 @@ import {
   TextInput, Animated, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_NAMES_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const parseDOB = (s) => {
+  const m = (s || '').match(/^(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})$/);
+  if (m) return { d: +m[1], mo: +m[2], y: +m[3] };
+  return null;
+};
+
+const formatDOB = (d, mo, y) => `${pad2(d)}/${pad2(mo)}/${y}`;
+
+const ageFrom = (d, mo, y) => {
+  const t = new Date();
+  let a = t.getFullYear() - y;
+  const md = t.getMonth() + 1 - mo;
+  if (md < 0 || (md === 0 && t.getDate() < d)) a -= 1;
+  return a;
+};
+
+function WheelColumn({ items, value, onChange, width = 70, itemHeight = 44, formatItem }) {
+  const { C } = useTheme();
+  const ref = useRef(null);
+  const [scrollIdx, setScrollIdx] = useState(Math.max(0, items.indexOf(value)));
+  const lastSyncedValue = useRef(value);
+
+  useEffect(() => {
+    const idx = Math.max(0, items.indexOf(value));
+    setScrollIdx(idx);
+    if (lastSyncedValue.current !== value) {
+      lastSyncedValue.current = value;
+      requestAnimationFrame(() => {
+        ref.current?.scrollTo({ y: idx * itemHeight, animated: false });
+      });
+    }
+  }, [value, items.length]);
+
+  useEffect(() => {
+    const idx = Math.max(0, items.indexOf(value));
+    requestAnimationFrame(() => {
+      ref.current?.scrollTo({ y: idx * itemHeight, animated: false });
+    });
+  }, []);
+
+  const onScroll = (e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const i = Math.max(0, Math.min(items.length - 1, Math.round(y / itemHeight)));
+    if (i !== scrollIdx) setScrollIdx(i);
+  };
+  const onEnd = (e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const i = Math.max(0, Math.min(items.length - 1, Math.round(y / itemHeight)));
+    lastSyncedValue.current = items[i];
+    if (items[i] !== value) onChange(items[i]);
+  };
+
+  return (
+    <View style={{ width, height: itemHeight * 5 }}>
+      <ScrollView
+        ref={ref}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={itemHeight}
+        decelerationRate="fast"
+        scrollEventThrottle={16}
+        onScroll={onScroll}
+        onMomentumScrollEnd={onEnd}
+        onScrollEndDrag={onEnd}
+        contentContainerStyle={{ paddingVertical: itemHeight * 2 }}
+      >
+        {items.map((it, i) => {
+          const dist = Math.abs(i - scrollIdx);
+          const active = dist === 0;
+          return (
+            <View key={i} style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{
+                color: active ? C.green : C.white,
+                fontSize: active ? 22 : 18,
+                fontWeight: active ? '900' : '600',
+                opacity: active ? 1 : Math.max(0.18, 0.6 - dist * 0.18),
+              }}>
+                {formatItem ? formatItem(it) : it}
+              </Text>
+            </View>
+          );
+        })}
+      </ScrollView>
+      <View pointerEvents="none" style={{
+        position: 'absolute', left: 0, right: 0, top: itemHeight * 2,
+        height: itemHeight,
+        borderTopWidth: 1, borderBottomWidth: 1,
+        borderColor: C.green + '55',
+      }} />
+    </View>
+  );
+}
+
+function DateOfBirthPicker({ value, onChange }) {
+  const { C } = useTheme();
+  const today = new Date();
+  const maxYear = today.getFullYear() - 13;
+  const minYear = 1925;
+  const years = useRef(Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i)).current;
+  const monthsNum = useRef([1,2,3,4,5,6,7,8,9,10,11,12]).current;
+
+  const parsed = parseDOB(value);
+  const initial = parsed || { d: 15, mo: 1, y: 2000 };
+  const [d, setD] = useState(initial.d);
+  const [mo, setMo] = useState(initial.mo);
+  const [y, setY] = useState(initial.y);
+
+  useEffect(() => {
+    if (!parsed) onChange(formatDOB(initial.d, initial.mo, initial.y));
+  }, []);
+
+  const dim = new Date(y, mo, 0).getDate();
+  const days = Array.from({ length: dim }, (_, i) => i + 1);
+  const safeD = Math.min(d, dim);
+
+  const commit = (nd, nm, ny) => {
+    const lim = new Date(ny, nm, 0).getDate();
+    const cd = Math.min(nd, lim);
+    onChange(formatDOB(cd, nm, ny));
+  };
+
+  const age = ageFrom(safeD, mo, y);
+
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+        <WheelColumn
+          items={days}
+          value={safeD}
+          onChange={(v) => { setD(v); commit(v, mo, y); }}
+          width={64}
+          formatItem={(n) => pad2(n)}
+        />
+        <WheelColumn
+          items={monthsNum}
+          value={mo}
+          onChange={(v) => { setMo(v); commit(d, v, y); }}
+          width={92}
+          formatItem={(n) => MONTH_NAMES[n - 1]}
+        />
+        <WheelColumn
+          items={years}
+          value={y}
+          onChange={(v) => { setY(v); commit(d, mo, v); }}
+          width={86}
+        />
+      </View>
+      <View style={{ alignItems: 'center', marginTop: 18 }}>
+        <Text style={{ color: C.white, fontSize: 18, fontWeight: '800' }}>
+          {MONTH_NAMES_FULL[mo - 1]} {safeD}, {y}
+        </Text>
+        <View style={{
+          marginTop: 10, paddingHorizontal: 14, paddingVertical: 6,
+          borderRadius: 999, backgroundColor: C.greenGlow2, borderWidth: 1, borderColor: C.green + '40',
+        }}>
+          <Text style={{ color: C.green, fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>
+            {age} YEARS OLD
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function RulerPicker({ min, max, step = 1, value, unit, decimals = 0, onChange, formatBig, defaultValue }) {
+  const { C } = useTheme();
+  const TICK_W = 12;
+  const ref = useRef(null);
+  const [containerW, setContainerW] = useState(0);
+
+  const ticks = useRef((() => {
+    const arr = [];
+    for (let i = min; i <= max + 1e-9; i += step) arr.push(+i.toFixed(decimals + 2));
+    return arr;
+  })()).current;
+
+  const v = parseFloat(value);
+  const initial = !isNaN(v)
+    ? Math.max(min, Math.min(max, v))
+    : (defaultValue != null ? defaultValue : Math.round((min + max) / 2));
+  const initialIdx = Math.max(0, Math.min(ticks.length - 1,
+    Math.round((initial - min) / step)
+  ));
+  const [display, setDisplay] = useState(ticks[initialIdx]);
+  const didInit = useRef(false);
+
+  useEffect(() => {
+    if (!didInit.current && containerW > 0) {
+      didInit.current = true;
+      ref.current?.scrollTo({ x: initialIdx * TICK_W, animated: false });
+      if (isNaN(v)) onChange(String(ticks[initialIdx]));
+    }
+  }, [containerW]);
+
+  const onScroll = (e) => {
+    const x = e.nativeEvent.contentOffset.x;
+    const i = Math.max(0, Math.min(ticks.length - 1, Math.round(x / TICK_W)));
+    if (ticks[i] !== display) setDisplay(ticks[i]);
+  };
+  const onEnd = (e) => {
+    const x = e.nativeEvent.contentOffset.x;
+    const i = Math.max(0, Math.min(ticks.length - 1, Math.round(x / TICK_W)));
+    onChange(String(ticks[i]));
+  };
+
+  return (
+    <View>
+      <View style={{ alignItems: 'center', marginBottom: 18 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+          <Text style={{ color: C.green, fontSize: 64, fontWeight: '900', lineHeight: 68, letterSpacing: -1 }}>
+            {formatBig ? formatBig(display) : display}
+          </Text>
+          <Text style={{ color: C.muted, fontSize: 16, fontWeight: '800', marginLeft: 8, marginBottom: 12, letterSpacing: 1 }}>
+            {unit}
+          </Text>
+        </View>
+      </View>
+      <View
+        style={{ height: 80, position: 'relative', overflow: 'hidden' }}
+        onLayout={(e) => setContainerW(e.nativeEvent.layout.width)}
+      >
+        {containerW > 0 && (
+          <ScrollView
+            ref={ref}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={TICK_W}
+            decelerationRate="fast"
+            scrollEventThrottle={16}
+            onScroll={onScroll}
+            onMomentumScrollEnd={onEnd}
+            onScrollEndDrag={onEnd}
+            contentContainerStyle={{ paddingHorizontal: containerW / 2 - TICK_W / 2 }}
+          >
+            {ticks.map((t, i) => {
+              const major = step < 1 ? Math.abs(t - Math.round(t)) < 1e-9 : (Math.round(t) % 10 === 0);
+              const mid = step < 1 ? false : (Math.round(t) % 5 === 0);
+              return (
+                <View key={i} style={{ width: TICK_W, alignItems: 'center', justifyContent: 'flex-start' }}>
+                  <View style={{
+                    width: major ? 2 : 1.5,
+                    height: major ? 36 : mid ? 24 : 14,
+                    backgroundColor: C.white,
+                    opacity: major ? 0.85 : mid ? 0.45 : 0.25,
+                    borderRadius: 1,
+                  }} />
+                  {major && (
+                    <Text style={{ color: C.muted, fontSize: 10, marginTop: 6, fontWeight: '700' }}>
+                      {formatBig ? formatBig(t) : t}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
+        <View pointerEvents="none" style={{
+          position: 'absolute', top: 0, left: '50%', marginLeft: -1.5, width: 3, height: 44, backgroundColor: C.green, borderRadius: 2,
+        }} />
+        <View pointerEvents="none" style={{
+          position: 'absolute', top: -8, left: '50%', marginLeft: -7, width: 14, height: 14, borderRadius: 7, backgroundColor: C.green,
+        }} />
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, paddingHorizontal: 6 }}>
+        <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700' }}>Min {formatBig ? formatBig(min) : min} {unit}</Text>
+        <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700' }}>Max {formatBig ? formatBig(max) : max} {unit}</Text>
+      </View>
+    </View>
+  );
+}
 const SECTIONS = [
   { key: 'account', label: 'Account', icon: '●' },
   { key: 'basics', label: 'About You', icon: '◎' },
@@ -217,11 +491,23 @@ export default function OnboardingScreen({ onComplete, user }) {
     const id = currentStep.id;
     if (id === 'exerciseType') return data.exerciseType.length > 0;
     if (val === '' || val === undefined || val === null) return false;
-    if (['height', 'weight', 'maxWeight', 'targetWeight'].includes(id)) {
-      const num = parseFloat(val);
-      return !isNaN(num) && num > 0 && num < 500;
+    if (id === 'height') {
+      const cm = parseFloat(val);
+      return !isNaN(cm) && cm >= 100 && cm <= 230;
     }
-    if (id === 'birthday') return val.length >= 8;
+    if (['weight', 'maxWeight', 'targetWeight'].includes(id)) {
+      const isMetric = data.units === 'Metric';
+      const num = parseFloat(val);
+      const lo = isMetric ? 30 : 66;
+      const hi = isMetric ? 250 : 550;
+      return !isNaN(num) && num >= lo && num <= hi;
+    }
+    if (id === 'birthday') {
+      const p = parseDOB(val);
+      if (!p) return false;
+      const a = ageFrom(p.d, p.mo, p.y);
+      return a >= 13 && a <= 100;
+    }
     return true;
   };
 
@@ -285,74 +571,72 @@ export default function OnboardingScreen({ onComplete, user }) {
 
       case 'birthday':
         return (
-          <View>
-            <TextInput
-              style={s.textInput}
-              placeholder="DD / MM / YYYY"
-              placeholderTextColor={C.muted}
-              value={data.birthday}
-              onChangeText={v => updateField('birthday', v)}
-              keyboardType="numeric"
-              maxLength={14}
-            />
-          </View>
+          <DateOfBirthPicker
+            value={data.birthday}
+            onChange={(v) => updateField('birthday', v)}
+          />
         );
 
       case 'height':
         if (data.units === 'Imperial') {
+          const totalIn = parseFloat(data.heightIn || '') >= 0 || parseFloat(data.heightFt || '') >= 0
+            ? (parseFloat(data.heightFt || '0') * 12 + parseFloat(data.heightIn || '0'))
+            : NaN;
           return (
-            <View style={s.unitInputRow}>
-              <TextInput
-                style={[s.textInput, { flex: 1 }]}
-                placeholder="5"
-                placeholderTextColor={C.muted}
-                value={data.heightFt || ''}
-                onChangeText={v => { updateField('heightFt', v); updateField('height', String(((parseFloat(v)||0)*30.48) + ((parseFloat(data.heightIn||'0'))*2.54))); }}
-                keyboardType="numeric"
-              />
-              <View style={s.unitBadge}><Text style={s.unitText}>ft</Text></View>
-              <TextInput
-                style={[s.textInput, { flex: 1 }]}
-                placeholder="10"
-                placeholderTextColor={C.muted}
-                value={data.heightIn || ''}
-                onChangeText={v => { updateField('heightIn', v); updateField('height', String(((parseFloat(data.heightFt||'0'))*30.48) + ((parseFloat(v)||0)*2.54))); }}
-                keyboardType="numeric"
-              />
-              <View style={s.unitBadge}><Text style={s.unitText}>in</Text></View>
-            </View>
+            <RulerPicker
+              min={48}
+              max={86}
+              step={1}
+              value={isNaN(totalIn) ? '' : String(totalIn)}
+              defaultValue={68}
+              unit=""
+              formatBig={(n) => `${Math.floor(n / 12)}'${n % 12}"`}
+              onChange={(str) => {
+                const inches = parseInt(str, 10);
+                const ft = Math.floor(inches / 12);
+                const inch = inches % 12;
+                updateField('heightFt', String(ft));
+                updateField('heightIn', String(inch));
+                updateField('height', String((ft * 30.48) + (inch * 2.54)));
+              }}
+            />
           );
         }
         return (
-          <View style={s.unitInputRow}>
-            <TextInput
-              style={[s.textInput, { flex: 1 }]}
-              placeholder="175"
-              placeholderTextColor={C.muted}
-              value={data.height}
-              onChangeText={v => updateField('height', v)}
-              keyboardType="numeric"
-            />
-            <View style={s.unitBadge}><Text style={s.unitText}>cm</Text></View>
-          </View>
+          <RulerPicker
+            min={120}
+            max={220}
+            step={1}
+            value={data.height}
+            defaultValue={170}
+            unit="cm"
+            onChange={(v) => updateField('height', v)}
+          />
         );
 
       case 'weight':
       case 'maxWeight':
-      case 'targetWeight':
+      case 'targetWeight': {
+        const isMetric = data.units === 'Metric';
+        const min = isMetric ? 30 : 66;
+        const max = isMetric ? 250 : 550;
+        const def = id === 'weight'
+          ? (isMetric ? 75 : 165)
+          : id === 'maxWeight'
+          ? (isMetric ? 80 : 175)
+          : (isMetric ? 70 : 155);
         return (
-          <View style={s.unitInputRow}>
-            <TextInput
-              style={[s.textInput, { flex: 1 }]}
-              placeholder={id === 'weight' ? '80' : id === 'maxWeight' ? '95' : '70'}
-              placeholderTextColor={C.muted}
-              value={data[id]}
-              onChangeText={v => updateField(id, v)}
-              keyboardType="numeric"
-            />
-            <View style={s.unitBadge}><Text style={s.unitText}>{data.units === 'Metric' ? 'kg' : 'lbs'}</Text></View>
-          </View>
+          <RulerPicker
+            min={min}
+            max={max}
+            step={1}
+            value={data[id]}
+            defaultValue={def}
+            unit={isMetric ? 'kg' : 'lbs'}
+            onChange={(v) => updateField(id, v)}
+          />
         );
+      }
 
       case 'weightTrend':
         return renderIconOptions([
