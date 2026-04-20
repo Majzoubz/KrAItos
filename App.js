@@ -27,6 +27,7 @@ import MeasurementsScreen  from './screens/MeasurementsScreen';
 import BottomNav           from './components/BottomNav';
 import WebLayout           from './components/WebLayout';
 import SplashScreen        from './components/SplashScreen';
+import ScreenTransition    from './components/ScreenTransition';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -171,14 +172,16 @@ function App() {
   if (isWideWeb && isAuthed) {
     return (
       <WebLayout current={screen} onNavigate={navigate} user={user}>
-        {renderScreen()}
+        <ScreenTransition screenKey={screen}>{renderScreen()}</ScreenTransition>
       </WebLayout>
     );
   }
 
   return (
     <View style={s.root}>
-      <View style={s.content}>{renderScreen()}</View>
+      <View style={s.content}>
+        <ScreenTransition screenKey={screen}>{renderScreen()}</ScreenTransition>
+      </View>
       {isAuthed && <BottomNav current={screen} onNavigate={navigate} />}
     </View>
   );
