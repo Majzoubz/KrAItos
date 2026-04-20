@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { C } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { callAI, callAIWithImage, parseJSON } from '../utils/api';
 import { Auth } from '../utils/auth';
 import { Storage, KEYS } from '../utils/storage';
@@ -16,6 +16,8 @@ const { width } = Dimensions.get('window');
 const NUTRITION_SYSTEM = 'You are a professional nutritionist. Return ONLY valid JSON with no markdown and no extra text. Use this exact structure: {"meal":"name","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"sugar":number,"sodium":number,"servingSize":"description","healthScore":number,"tips":["tip1","tip2"]}. All macros in grams. healthScore is 1-10.';
 
 export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const [phase, setPhase]           = useState('idle');
   const [capturedImage, setCaptured] = useState(null);
   const [mimeType, setMimeType]     = useState('image/jpeg');
@@ -422,7 +424,7 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },

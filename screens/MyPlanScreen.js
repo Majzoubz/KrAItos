@@ -3,10 +3,12 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   SafeAreaView, ScrollView, ActivityIndicator, Platform,
 } from 'react-native';
-import { C } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
 
 export default function MyPlanScreen({ user, onNavigate }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const [plan, setPlan]       = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -101,7 +103,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   titleBar: { padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },

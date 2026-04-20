@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { C } from '../constants/theme';
-
+import { useTheme } from '../theme/ThemeContext';
 const NAV_ITEMS = [
   { screen: 'home',    label: 'Home',      icon: '🏠' },
   { screen: 'plan',    label: 'Training',  icon: '🏋️' },
@@ -11,6 +10,8 @@ const NAV_ITEMS = [
 ];
 
 export default function WebLayout({ current, onNavigate, user, children }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <View style={s.root}>
       <View style={s.sidebar}>
@@ -57,7 +58,7 @@ export default function WebLayout({ current, onNavigate, user, children }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: C.bg },
   sidebar: { width: 240, backgroundColor: C.surface, borderRightWidth: 1, borderRightColor: C.border, paddingTop: 32, paddingHorizontal: 16, justifyContent: 'space-between' },
   logo: { flexDirection: 'row', alignItems: 'center', marginBottom: 40, paddingHorizontal: 8 },

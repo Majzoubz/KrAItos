@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
-import { C } from '../constants/theme';
-
+import { useTheme } from '../theme/ThemeContext';
 const TABS = [
   { screen: 'home',    label: 'Home',      icon: '🏠' },
   { screen: 'plan',    label: 'Training',  icon: '🏋️' },
@@ -11,6 +10,8 @@ const TABS = [
 ];
 
 export default function BottomNav({ current, onNavigate }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <SafeAreaView style={s.safeArea}>
       <View style={s.bar}>
@@ -35,7 +36,7 @@ export default function BottomNav({ current, onNavigate }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safeArea: { backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.border },
   bar: { flexDirection: 'row', paddingTop: 8, paddingBottom: 6 },
   tab: { flex: 1, alignItems: 'center', paddingBottom: 4 },

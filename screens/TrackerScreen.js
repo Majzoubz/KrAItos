@@ -3,13 +3,15 @@ import {
   StyleSheet, Text, View, TouchableOpacity, TextInput,
   SafeAreaView, ScrollView, Alert, Dimensions,
 } from 'react-native';
-import { C } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
 
 const { width } = Dimensions.get('window');
 const TODAY = new Date().toDateString();
 
 export default function TrackerScreen({ user }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const [tab, setTab]               = useState('weight');
   const [weightInput, setWeightInput] = useState('');
   const [weightLog, setWeightLog]   = useState([]);
@@ -281,7 +283,7 @@ export default function TrackerScreen({ user }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   titleBar: { padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },

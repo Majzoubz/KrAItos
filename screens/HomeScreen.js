@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { C } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
 import { Auth } from '../utils/auth';
 import { generatePlanFromOnboarding } from '../utils/planGenerator';
@@ -13,6 +13,8 @@ import { generatePlanFromOnboarding } from '../utils/planGenerator';
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
 function Ring({ size, stroke, pct, color, children, trackColor }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const deg = Math.round(Math.min(Math.max(pct, 0), 1) * 360);
   const ringStyle = Platform.OS === 'web' ? {
     background: `conic-gradient(${color} ${deg}deg, ${trackColor || C.border} ${deg}deg)`,
@@ -38,6 +40,8 @@ function Ring({ size, stroke, pct, color, children, trackColor }) {
 }
 
 function DateStrip({ selectedIdx, onSelect, today }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const days = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
@@ -64,6 +68,8 @@ function DateStrip({ selectedIdx, onSelect, today }) {
 }
 
 export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const [plan, setPlan]               = useState(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [generating, setGenerating]   = useState(false);
@@ -311,7 +317,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   scrollContent: { paddingBottom: 130, paddingHorizontal: 16, paddingTop: 12 },
 

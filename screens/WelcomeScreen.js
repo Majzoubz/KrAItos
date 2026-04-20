@@ -2,9 +2,10 @@ import React, { useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, Animated, Platform, Image,
 } from 'react-native';
-import { C } from '../constants/theme';
-
+import { useTheme } from '../theme/ThemeContext';
 export default function WelcomeScreen({ onStart }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const fadeIn = useRef(new Animated.Value(0)).current;
   const slideUp = useRef(new Animated.Value(60)).current;
   const btnSlide = useRef(new Animated.Value(40)).current;
@@ -81,7 +82,7 @@ export default function WelcomeScreen({ onStart }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg, justifyContent: 'space-between', overflow: 'hidden' },
   glowTop: {
     position: 'absolute', top: -220, left: '50%', marginLeft: -220,

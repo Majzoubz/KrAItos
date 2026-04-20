@@ -3,8 +3,7 @@ import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
   TextInput, Animated, Platform, ActivityIndicator, Image,
 } from 'react-native';
-import { C } from '../constants/theme';
-
+import { useTheme } from '../theme/ThemeContext';
 const SECTIONS = [
   { key: 'account', label: 'Account', icon: '●' },
   { key: 'basics', label: 'About You', icon: '◎' },
@@ -35,6 +34,9 @@ const STEPS = [
 ];
 
 function SectionTransition({ section, onContinue }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
+  const ts = makeTs(C);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const [dots, setDots] = useState('');
@@ -77,6 +79,9 @@ function SectionTransition({ section, onContinue }) {
 }
 
 function BuildingScreen({ onDone, data, userEmail }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
+  const bs = makeBs(C);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [phase, setPhase] = useState(0);
   const [apiDone, setApiDone] = useState(false);
@@ -145,6 +150,8 @@ function BuildingScreen({ onDone, data, userEmail }) {
 }
 
 export default function OnboardingScreen({ onComplete, user }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const [step, setStep] = useState(0);
   const [showTransition, setShowTransition] = useState(null);
   const [showBuilding, setShowBuilding] = useState(false);
@@ -625,7 +632,7 @@ export default function OnboardingScreen({ onComplete, user }) {
   );
 }
 
-const ts = StyleSheet.create({
+const makeTs = (C) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
   glow: {
     position: 'absolute', width: 300, height: 300, borderRadius: 150,
@@ -642,7 +649,7 @@ const ts = StyleSheet.create({
   loaderFill: { height: '100%', width: '70%', backgroundColor: C.green, borderRadius: 2 },
 });
 
-const bs = StyleSheet.create({
+const makeBs = (C) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
   glow: {
     position: 'absolute', width: 400, height: 400, borderRadius: 200,
@@ -663,7 +670,7 @@ const bs = StyleSheet.create({
   phaseTextActive: { color: C.light, fontWeight: '600' },
 });
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: { paddingTop: Platform.OS === 'web' ? 50 : 60, paddingHorizontal: 20, paddingBottom: 16 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },

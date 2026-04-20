@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
 
 import { Auth } from './utils/auth';
-import { C } from './constants/theme';
+import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { isWideWeb } from './utils/platform';
 import { Storage, KEYS } from './utils/storage';
 import WelcomeScreen       from './screens/WelcomeScreen';
@@ -28,6 +28,8 @@ const LEGACY_ONBOARDING_KEY = 'fitlife_onboarding_complete';
 const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile', 'settings'];
 
 function App() {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const [screen, setScreen] = useState('loading');
   const [user, setUser]     = useState(null);
   const [error, setError]   = useState(null);
@@ -161,7 +163,7 @@ function App() {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   content: { flex: 1 },
   loading: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
@@ -181,4 +183,12 @@ const s = StyleSheet.create({
   errorBtnText: { color: C.bg, fontWeight: '900', fontSize: 15, letterSpacing: 1 },
 });
 
-registerRootComponent(App);
+function Root() {
+  return (
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
+  );
+}
+
+registerRootComponent(Root);

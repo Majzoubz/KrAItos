@@ -1,4 +1,4 @@
-export const C = {
+export const darkC = {
   bg: '#000000',
   surface: '#0A0A0A',
   card: '#111111',
@@ -21,3 +21,29 @@ export const C = {
   purple: '#A66CFF',
   cyan: '#00D4FF',
 };
+
+export const lightC = {
+  bg: '#FFFFFF',
+  surface: '#F4F5F7',
+  card: '#FFFFFF',
+  cardElevated: '#F8F9FB',
+  border: '#E5E7EB',
+  borderLight: '#D1D5DB',
+  green: '#5BC400',
+  greenDim: '#4BA300',
+  greenGlow: 'rgba(91, 196, 0, 0.14)',
+  greenGlow2: 'rgba(91, 196, 0, 0.08)',
+  greenGlow3: 'rgba(91, 196, 0, 0.04)',
+  white: '#0A0A0A',
+  light: '#1F2937',
+  light2: '#374151',
+  muted: '#6B7280',
+  mutedLight: '#4B5563',
+  danger: '#DC2626',
+  orange: '#EA580C',
+  blue: '#2563EB',
+  purple: '#7C3AED',
+  cyan: '#0891B2',
+};
+
+export const C = darkC;

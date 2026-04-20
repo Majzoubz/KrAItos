@@ -4,8 +4,7 @@ import {
   SafeAreaView, ScrollView, Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { C } from '../constants/theme';
-
+import { useTheme } from '../theme/ThemeContext';
 const SETTINGS_KEY = 'greengain_settings';
 
 const LANGUAGES = [
@@ -23,13 +22,14 @@ const UNIT_SYSTEMS = [
 
 const DEFAULTS = {
   language: 'en',
-  darkMode: true,
   notifications: true,
   units: 'metric',
   reminders: true,
 };
 
 export default function SettingsScreen({ onNavigate }) {
+  const { C, mode, setMode } = useTheme();
+  const s = makeStyles(C);
   const [settings, setSettings] = useState(DEFAULTS);
   const [loaded, setLoaded] = useState(false);
   const [showLang, setShowLang] = useState(false);
@@ -55,10 +55,7 @@ export default function SettingsScreen({ onNavigate }) {
   const unitLabel  = UNIT_SYSTEMS.find(u => u.code === settings.units)?.label || 'Metric';
 
   const onToggleDark = (val) => {
-    update('darkMode', val);
-    if (!val) {
-      Alert.alert('Light mode', 'Light theme is coming soon. Your preference has been saved.');
-    }
+    setMode(val ? 'dark' : 'light');
   };
 
   return (
@@ -81,7 +78,7 @@ export default function SettingsScreen({ onNavigate }) {
                 <Text style={s.rowSub}>Use dark theme across the app</Text>
               </View>
               <Switch
-                value={settings.darkMode}
+                value={mode === 'dark'}
                 onValueChange={onToggleDark}
                 trackColor={{ false: C.surface, true: C.green }}
                 thumbColor={C.white}
@@ -184,7 +181,7 @@ export default function SettingsScreen({ onNavigate }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   titleBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   titleBarText: { color: C.white, fontSize: 18, fontWeight: '900' },

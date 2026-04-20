@@ -3,8 +3,7 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   SafeAreaView, ScrollView, Alert,
 } from 'react-native';
-import { C } from '../constants/theme';
-
+import { useTheme } from '../theme/ThemeContext';
 const EXERCISES = [
   { name: 'Squat',    muscles: 'Quads - Glutes - Core',       difficulty: 'Beginner'     },
   { name: 'Push-Up',  muscles: 'Chest - Triceps - Shoulders', difficulty: 'Beginner'     },
@@ -14,9 +13,11 @@ const EXERCISES = [
   { name: 'Burpee',   muscles: 'Full Body - Cardio',          difficulty: 'Advanced'     },
 ];
 
-const DIFF_COLORS = { Beginner: C.green, Intermediate: C.orange, Advanced: C.danger };
 
 export default function ARScreen() {
+  const { C } = useTheme();
+  const s = makeStyles(C);
+  const DIFF_COLORS = { Beginner: C.green, Intermediate: C.orange, Advanced: C.danger };
   const [selected, setSelected] = useState(null);
 
   return (
@@ -83,7 +84,7 @@ export default function ARScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   titleBar: { padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },

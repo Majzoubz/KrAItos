@@ -4,10 +4,12 @@ import {
   KeyboardAvoidingView, Platform, ScrollView,
   Alert, ActivityIndicator, Animated, Image,
 } from 'react-native';
-import { C } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { Auth } from '../utils/auth';
 
 export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const [mode, setMode]             = useState(initialMode);
   const [fullName, setFullName]     = useState('');
   const [email, setEmail]           = useState('');
@@ -138,7 +140,7 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg, overflow: 'hidden' },
   glowTop: {
     position: 'absolute', top: -180, left: '50%', marginLeft: -180,

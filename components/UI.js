@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { C } from '../constants/theme';
-
+import { useTheme } from '../theme/ThemeContext';
 export function Field({ label, ...props }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <>
       <Text style={s.fieldLabel}>{label}</Text>
@@ -16,6 +17,8 @@ export function Field({ label, ...props }) {
 }
 
 export function ScreenHeader({ title, icon, onBack }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <View style={s.screenHeader}>
       <TouchableOpacity style={s.backBtn} onPress={onBack}>
@@ -28,10 +31,14 @@ export function ScreenHeader({ title, icon, onBack }) {
 }
 
 export function SectionTitle({ children }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return <Text style={s.sectionTitle}>{children}</Text>;
 }
 
 export function PrimaryButton({ label, onPress, disabled, children, style }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <TouchableOpacity
       style={[s.primaryBtn, disabled && { opacity: 0.5 }, style]}
@@ -45,6 +52,8 @@ export function PrimaryButton({ label, onPress, disabled, children, style }) {
 }
 
 export function SecondaryButton({ label, onPress }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <TouchableOpacity style={s.secondaryBtn} onPress={onPress} activeOpacity={0.85}>
       <Text style={s.secondaryBtnText}>{label}</Text>
@@ -53,6 +62,8 @@ export function SecondaryButton({ label, onPress }) {
 }
 
 export function MacroGrid({ items }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <View style={s.macroGrid}>
       {items.map(([label, val, unit, color]) => (
@@ -68,6 +79,8 @@ export function MacroGrid({ items }) {
 }
 
 export function CalorieHero({ calories, label = 'CALORIES' }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <View style={s.calorieHero}>
       <Text style={s.calorieNum}>{calories}</Text>
@@ -77,6 +90,8 @@ export function CalorieHero({ calories, label = 'CALORIES' }) {
 }
 
 export function TipsBox({ title, tips }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <View style={s.tipsBox}>
       <Text style={s.tipsTitle}>{title}</Text>
@@ -88,6 +103,8 @@ export function TipsBox({ title, tips }) {
 }
 
 export function ChipSelector({ label, options, selected, onSelect }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   return (
     <>
       <Text style={s.fieldLabel}>{label}</Text>
@@ -106,7 +123,7 @@ export function ChipSelector({ label, options, selected, onSelect }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   fieldLabel: { color: C.white, fontSize: 13, fontWeight: '700', marginBottom: 8, marginTop: 4, letterSpacing: 0.5 },
   input: {
     backgroundColor: C.surface, color: C.white, padding: 16,

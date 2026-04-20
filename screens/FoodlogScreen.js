@@ -3,7 +3,7 @@ import {
   StyleSheet, Text, View, TouchableOpacity, TextInput,
   SafeAreaView, ScrollView, Alert, ActivityIndicator, Dimensions,
 } from 'react-native';
-import { C } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
 import { callAI, parseJSON } from '../utils/api';
 
@@ -13,6 +13,8 @@ const TODAY = new Date().toDateString();
 const MEAL_TIMES = ['Breakfast', 'Morning Snack', 'Lunch', 'Afternoon Snack', 'Dinner', 'Late Snack'];
 
 export default function FoodLogScreen({ user, onNavigate }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const [log, setLog]               = useState([]);
   const [plan, setPlan]             = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -435,7 +437,7 @@ export default function FoodLogScreen({ user, onNavigate }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },

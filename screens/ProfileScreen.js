@@ -3,10 +3,12 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   SafeAreaView, ScrollView, Alert,
 } from 'react-native';
-import { C } from '../constants/theme';
+import { useTheme } from '../theme/ThemeContext';
 import { Auth } from '../utils/auth';
 
 export default function ProfileScreen({ user, onLogout, onNavigate }) {
+  const { C } = useTheme();
+  const s = makeStyles(C);
   const joinDate = new Date(user.createdAt).toLocaleDateString('en-US', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
@@ -90,7 +92,7 @@ export default function ProfileScreen({ user, onLogout, onNavigate }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (C) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   titleBar: { padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   titleBarText: { color: C.white, fontSize: 20, fontWeight: '900', letterSpacing: 0.5 },
