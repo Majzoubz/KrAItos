@@ -234,7 +234,7 @@ const makeStyles = (C) => StyleSheet.create({
       ? { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }
       : {}),
   },
-  fabIcon: { width: 50, height: 50 },
+  fabIcon: { width: 70, height: 70 },
 
   backdrop: {
     flex: 1,
