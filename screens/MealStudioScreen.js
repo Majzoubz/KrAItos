@@ -160,7 +160,7 @@ function RecipeCard({ recipe, onAddToLog, onSave, saved }) {
 
 /* ----------------------------- INGREDIENTS ------------------------------ */
 
-function IngredientsTab({ uid, profile, onAddToLog }) {
+function IngredientsTab({ uid, profile, onAddToLog, onSavedChange }) {
   const { C } = useTheme();
   const [pantry, setPantry]       = useState([]);
   const [input, setInput]         = useState('');
@@ -235,6 +235,7 @@ function IngredientsTab({ uid, profile, onAddToLog }) {
     const list = (await Storage.get(KEYS.SAVED_MEALS(uid))) || [];
     await Storage.set(KEYS.SAVED_MEALS(uid), [{ ...recipe, savedAt: Date.now() }, ...list].slice(0, 50));
     setSaved(true); hSuccess();
+    onSavedChange && onSavedChange();
   };
 
   const addThisToLog = () => {
@@ -346,9 +347,33 @@ function IngredientsTab({ uid, profile, onAddToLog }) {
 
 /* ----------------------------- WEEKLY ----------------------------------- */
 
+const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, '').trim();
+const PANTRY_BASICS = new Set(['salt','pepper','oil','olive oil','water','garlic','onion','onions','butter','spices','herbs','pepper black','black pepper','sugar','flour']);
+
+const singularize = (w) => w.endsWith('ies') ? w.slice(0, -3) + 'y' : w.endsWith('es') && w.length > 3 ? w.slice(0, -2) : w.endsWith('s') && w.length > 3 ? w.slice(0, -1) : w;
+const tokens = (s) => new Set(norm(s).split(/\s+/).filter(Boolean).map(singularize));
+
+function computeShoppingList(plan, pantry) {
+  if (!plan?.days) return [];
+  const haveTokenSets = (pantry || []).map(tokens).filter(t => t.size > 0);
+  const seen = new Map();
+  plan.days.forEach(d => (d.meals || []).forEach(m => (m.ingredients || []).forEach(ing => {
+    const name = typeof ing === 'string' ? ing : ing.item;
+    const key = norm(name);
+    if (!key || PANTRY_BASICS.has(key)) return;
+    const needTokens = tokens(name);
+    // Match only if every meaningful token of the needed item is present in some pantry entry
+    const covered = haveTokenSets.some(have => [...needTokens].every(t => have.has(t)));
+    if (covered) return;
+    if (!seen.has(key)) seen.set(key, name);
+  })));
+  return [...seen.values()];
+}
+
 function WeeklyTab({ uid, profile, dailyCalories, onAddToLog }) {
   const { C } = useTheme();
   const [groceries, setGroceries] = useState([]);
+  const [pantry, setPantry]       = useState([]);
   const [input, setInput]         = useState('');
   const [days, setDays]           = useState('7');
   const [meals, setMeals]         = useState('3');
@@ -358,6 +383,7 @@ function WeeklyTab({ uid, profile, dailyCalories, onAddToLog }) {
 
   useEffect(() => {
     Storage.get(KEYS.GROCERY(uid)).then(g => setGroceries(Array.isArray(g) ? g : []));
+    Storage.get(KEYS.PANTRY(uid)).then(p => setPantry(Array.isArray(p) ? p : []));
     Storage.get(KEYS.WEEKLY_PLAN(uid)).then(p => p && setPlan(p));
   }, [uid]);
 
@@ -521,6 +547,40 @@ function WeeklyTab({ uid, profile, dailyCalories, onAddToLog }) {
               ))}
             </View>
           )}
+
+          {(() => {
+            const shop = computeShoppingList(plan, [...pantry, ...groceries]);
+            if (shop.length === 0) return (
+              <View style={{ marginTop: 14, padding: 14, backgroundColor: C.green + '15', borderRadius: 14 }}>
+                <Text style={{ color: C.green, fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>✓ FULLY STOCKED</Text>
+                <Text style={{ color: C.light, fontSize: 12, marginTop: 4 }}>Your pantry and grocery list cover this entire plan.</Text>
+              </View>
+            );
+            return (
+              <View style={{ marginTop: 14, padding: 14, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: '#FF8A0055' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: '#FF8A00', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>🛒 STILL TO BUY ({shop.length})</Text>
+                  <TouchableOpacity onPress={async () => {
+                    const next = [...new Set([...groceries, ...shop])];
+                    setGroceries(next);
+                    await Storage.set(KEYS.GROCERY(uid), next);
+                    hSuccess();
+                    showAlert('Added', `${shop.length} items added to your grocery list.`);
+                  }}>
+                    <Text style={{ color: C.green, fontSize: 11, fontWeight: '900' }}>+ Add all to list</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ color: C.muted, fontSize: 11, marginTop: 4, marginBottom: 8 }}>Items the AI plan needs that aren't in your pantry or list yet.</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {shop.map((it, i) => (
+                    <View key={i} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, marginRight: 6, marginBottom: 6 }}>
+                      <Text style={{ color: C.white, fontSize: 12 }}>{it}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            );
+          })()}
 
           {plan.prepTips?.length > 0 && (
             <View style={{ marginTop: 8, padding: 14, backgroundColor: C.green + '15', borderRadius: 14 }}>
@@ -779,14 +839,49 @@ export default function MealStudioScreen({ user, onNavigate }) {
   const uid = user?.email || user?.uid;
   const [tab, setTab] = useState('ingredients');
   const [plan, setPlan] = useState(null);
+  const [prefs, setPrefs] = useState({ allergies: '', dislikes: '' });
+  const [showPrefs, setShowPrefs] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
+  const [saved, setSaved] = useState([]);
+  const [allergiesDraft, setAllergiesDraft] = useState('');
+  const [dislikesDraft, setDislikesDraft] = useState('');
 
-  useEffect(() => { Storage.get(KEYS.PLAN(uid)).then(setPlan); }, [uid]);
+  useEffect(() => {
+    Storage.get(KEYS.PLAN(uid)).then(setPlan);
+    Storage.get(KEYS.MEAL_PREFS(uid)).then(p => {
+      const v = p && typeof p === 'object' ? p : { allergies: '', dislikes: '' };
+      setPrefs(v); setAllergiesDraft(v.allergies || ''); setDislikesDraft(v.dislikes || '');
+    });
+    Storage.get(KEYS.SAVED_MEALS(uid)).then(v => setSaved(Array.isArray(v) ? v : []));
+  }, [uid]);
 
-  const profile = plan ? {
-    diet: plan.userProfile?.diet,
-    goal: plan.userProfile?.goal,
-    proteinPct: plan.proteinPct, carbsPct: plan.carbsPct, fatPct: plan.fatPct,
-  } : null;
+  const refreshSaved = async () => {
+    const v = await Storage.get(KEYS.SAVED_MEALS(uid));
+    setSaved(Array.isArray(v) ? v : []);
+  };
+
+  const savePrefs = async () => {
+    const next = { allergies: allergiesDraft.trim(), dislikes: dislikesDraft.trim() };
+    setPrefs(next);
+    await Storage.set(KEYS.MEAL_PREFS(uid), next);
+    setShowPrefs(false);
+    hSuccess();
+  };
+
+  const deleteSaved = async (idx) => {
+    const next = saved.filter((_, i) => i !== idx);
+    setSaved(next);
+    await Storage.set(KEYS.SAVED_MEALS(uid), next);
+    hTick();
+  };
+
+  const profile = {
+    diet: plan?.userProfile?.diet,
+    goal: plan?.userProfile?.goal,
+    allergies: prefs.allergies,
+    dislikes: prefs.dislikes,
+    proteinPct: plan?.proteinPct, carbsPct: plan?.carbsPct, fatPct: plan?.fatPct,
+  };
 
   // Map our compact slots to FoodLog's full meal-time taxonomy so entries actually render in sections.
   const mapMealTime = (slot) => {
@@ -827,8 +922,26 @@ export default function MealStudioScreen({ user, onNavigate }) {
           <Text style={s.backTxt}>‹</Text>
         </TouchableOpacity>
         <Text style={s.title}>AI Meal Studio</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={() => { hSelect(); refreshSaved(); setShowSaved(true); }} style={s.savedPill}>
+          <Text style={{ color: C.green, fontSize: 14 }}>❤</Text>
+          <Text style={{ color: C.green, fontWeight: '900', fontSize: 12, marginLeft: 4 }}>{saved.length}</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Preferences strip */}
+      <TouchableOpacity onPress={() => { hSelect(); setShowPrefs(true); }} activeOpacity={0.85} style={s.prefsStrip}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: C.muted, fontSize: 10, fontWeight: '900', letterSpacing: 1 }}>YOUR PREFERENCES</Text>
+          <Text style={{ color: C.white, fontSize: 12, marginTop: 3 }} numberOfLines={1}>
+            <Text style={{ color: C.green, fontWeight: '800' }}>Diet: </Text>
+            {plan?.userProfile?.diet || 'Not set'}
+            <Text style={{ color: C.green, fontWeight: '800' }}>   ·   Allergies: </Text>
+            {prefs.allergies || 'none'}
+            {prefs.dislikes ? <><Text style={{ color: C.green, fontWeight: '800' }}>   ·   Avoid: </Text>{prefs.dislikes}</> : null}
+          </Text>
+        </View>
+        <Text style={{ color: C.green, fontSize: 18 }}>✎</Text>
+      </TouchableOpacity>
 
       <View style={s.tabBar}>
         {TABS.map(t => (
@@ -841,10 +954,91 @@ export default function MealStudioScreen({ user, onNavigate }) {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 18, paddingBottom: 40 }}>
-        {tab === 'ingredients' && <IngredientsTab uid={uid} profile={profile} onAddToLog={addToLog} />}
+        {tab === 'ingredients' && <IngredientsTab uid={uid} profile={profile} onAddToLog={addToLog} onSavedChange={refreshSaved} />}
         {tab === 'weekly'      && <WeeklyTab      uid={uid} profile={profile} dailyCalories={plan?.dailyCalories} onAddToLog={addToLog} />}
         {tab === 'fridge'      && <FridgeTab      uid={uid} profile={profile} dailyCalories={plan?.dailyCalories} onAddToLog={addToLog} />}
       </ScrollView>
+
+      {/* Preferences modal */}
+      <Modal visible={showPrefs} transparent animationType="slide" onRequestClose={() => setShowPrefs(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22, paddingBottom: 36 }}>
+            <View style={{ alignItems: 'center', marginBottom: 14 }}><View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: C.border }} /></View>
+            <Text style={{ color: C.white, fontSize: 20, fontWeight: '900' }}>Meal preferences</Text>
+            <Text style={{ color: C.muted, fontSize: 12, marginTop: 4, marginBottom: 16 }}>The AI will honor these on every recipe and meal plan.</Text>
+
+            <Text style={{ color: C.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 6 }}>DIET (FROM ONBOARDING)</Text>
+            <View style={{ backgroundColor: C.surface, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: C.border, marginBottom: 14 }}>
+              <Text style={{ color: C.white, fontSize: 14 }}>{plan?.userProfile?.diet || 'Not set'}</Text>
+            </View>
+
+            <Text style={{ color: C.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 6 }}>ALLERGIES</Text>
+            <TextInput value={allergiesDraft} onChangeText={setAllergiesDraft}
+              placeholder="e.g. peanuts, shellfish, gluten" placeholderTextColor={C.muted}
+              style={{ backgroundColor: C.surface, color: C.white, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: C.border, fontSize: 14, marginBottom: 14 }} />
+
+            <Text style={{ color: C.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 6 }}>DISLIKES / AVOID</Text>
+            <TextInput value={dislikesDraft} onChangeText={setDislikesDraft}
+              placeholder="e.g. mushrooms, cilantro, very spicy" placeholderTextColor={C.muted}
+              style={{ backgroundColor: C.surface, color: C.white, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: C.border, fontSize: 14, marginBottom: 18 }} />
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity onPress={() => { setAllergiesDraft(prefs.allergies || ''); setDislikesDraft(prefs.dislikes || ''); setShowPrefs(false); }} style={{ flex: 1, paddingVertical: 14, borderRadius: 14, backgroundColor: C.surface, alignItems: 'center', borderWidth: 1, borderColor: C.border }}>
+                <Text style={{ color: C.white, fontWeight: '800' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={savePrefs} style={{ flex: 1.4, paddingVertical: 14, borderRadius: 14, backgroundColor: C.green, alignItems: 'center' }}>
+                <Text style={{ color: C.bg, fontWeight: '900' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Saved favorites modal */}
+      <Modal visible={showSaved} transparent animationType="slide" onRequestClose={() => setShowSaved(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View style={{ marginTop: 60, flex: 1, backgroundColor: C.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.border }}>
+              <Text style={{ color: C.white, fontSize: 18, fontWeight: '900' }}>Saved Recipes ({saved.length})</Text>
+              <TouchableOpacity onPress={() => setShowSaved(false)}>
+                <Text style={{ color: C.muted, fontSize: 22, fontWeight: '900' }}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 18, paddingBottom: 40 }}>
+              {saved.length === 0 ? (
+                <View style={{ alignItems: 'center', padding: 40 }}>
+                  <Text style={{ fontSize: 36 }}>❤️</Text>
+                  <Text style={{ color: C.muted, fontSize: 13, marginTop: 8, textAlign: 'center' }}>No saved recipes yet. Tap the heart on any AI-generated meal to save it here.</Text>
+                </View>
+              ) : saved.map((r, i) => (
+                <View key={r.savedAt || i} style={{ backgroundColor: C.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: C.green, fontSize: 10, fontWeight: '900', letterSpacing: 1 }}>{(r.mealType || 'MEAL').toUpperCase()}{r.cookTime ? `  ·  ${r.cookTime}` : ''}{r.difficulty ? `  ·  ${r.difficulty}` : ''}</Text>
+                      <Text style={{ color: C.white, fontSize: 16, fontWeight: '900', marginTop: 3 }}>{r.name}</Text>
+                      <Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>{r.calories} kcal · P {r.protein}g · C {r.carbs}g · F {r.fat}g</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => deleteSaved(i)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={{ color: C.muted, fontSize: 20 }}>🗑</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                    <TouchableOpacity onPress={() => { addToLog({ name: r.name, calories: r.calories, protein: r.protein, carbs: r.carbs, fat: r.fat, mealTime: r.mealType }); }}
+                      style={{ flex: 1, paddingVertical: 8, borderRadius: 10, backgroundColor: C.green + '22', alignItems: 'center' }}>
+                      <Text style={{ color: C.green, fontWeight: '900', fontSize: 12 }}>+ Add to today's log</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {r.ingredients?.length > 0 && (
+                    <Text style={{ color: C.muted, fontSize: 11, marginTop: 8 }} numberOfLines={2}>
+                      {r.ingredients.slice(0, 6).map(ing => typeof ing === 'string' ? ing : ing.item).join(' · ')}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -855,6 +1049,8 @@ const makeStyles = (C) => StyleSheet.create({
   title: { color: C.white, fontSize: 18, fontWeight: '900' },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
   backTxt: { color: C.white, fontSize: 22, fontWeight: '700', marginTop: -2 },
+  savedPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: C.green + '22', borderWidth: 1, borderColor: C.green + '55' },
+  prefsStrip: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 18, marginBottom: 12, padding: 12, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.border },
   tabBar: { flexDirection: 'row', paddingHorizontal: 14, gap: 8 },
   tabBtn: { flex: 1, padding: 12, borderRadius: 14, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, alignItems: 'center' },
   tabBtnActive: { borderColor: C.green, backgroundColor: C.green + '15' },

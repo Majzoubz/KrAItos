@@ -38,4 +38,5 @@ export const KEYS = {
   FRIDGE:    (uid)        => 'fridge_'    + cleanUid(uid),
   SAVED_MEALS: (uid)      => 'savedmeals_'+ cleanUid(uid),
   WEEKLY_PLAN: (uid)      => 'weekplan_'  + cleanUid(uid),
+  MEAL_PREFS:  (uid)      => 'mealprefs_' + cleanUid(uid),
 };

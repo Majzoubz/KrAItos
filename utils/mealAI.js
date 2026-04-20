@@ -4,7 +4,8 @@ const dietLine = (profile) => {
   if (!profile) return '';
   const parts = [];
   if (profile.diet)        parts.push(`Diet preference: ${profile.diet}`);
-  if (profile.allergies)   parts.push(`Allergies / avoid: ${profile.allergies}`);
+  if (profile.allergies)   parts.push(`Allergies (HARD AVOID — never include): ${profile.allergies}`);
+  if (profile.dislikes)    parts.push(`Dislikes / avoid: ${profile.dislikes}`);
   if (profile.goal)        parts.push(`Goal: ${profile.goal}`);
   if (profile.proteinPct)  parts.push(`Macro split target: P${profile.proteinPct}/C${profile.carbsPct}/F${profile.fatPct}`);
   return parts.length ? '\nUSER CONSTRAINTS:\n' + parts.join('\n') : '';
