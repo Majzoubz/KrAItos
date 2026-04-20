@@ -264,6 +264,14 @@ export default function MyPlanScreen({ user, onNavigate }) {
         )}
 
         <TouchableOpacity
+          style={[s.updateBtn, { borderColor: C.green, marginTop: 16 }]}
+          onPress={() => onNavigate('grocery')}
+          activeOpacity={0.85}
+        >
+          <Text style={[s.updateBtnText, { color: C.green }]}>🛒 Grocery list from this plan</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={s.updateBtn}
           onPress={regenerate}
           disabled={regenerating}

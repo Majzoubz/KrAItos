@@ -24,6 +24,9 @@ import WorkoutSessionScreen from './screens/WorkoutSessionScreen';
 import BarcodeScanScreen   from './screens/BarcodeScanScreen';
 import WeeklyReviewScreen  from './screens/WeeklyReviewScreen';
 import MeasurementsScreen  from './screens/MeasurementsScreen';
+import CoachChatScreen     from './screens/CoachChatScreen';
+import GroceryListScreen   from './screens/GroceryListScreen';
+import RestaurantScreen    from './screens/RestaurantScreen';
 import BottomNav           from './components/BottomNav';
 import WebLayout           from './components/WebLayout';
 import SplashScreen        from './components/SplashScreen';
@@ -34,7 +37,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const ONBOARDING_KEY = 'greengain_onboarding_complete';
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 const LEGACY_ONBOARDING_KEY = 'fitlife_onboarding_complete';
-const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile', 'settings', 'progress', 'health', 'mealstudio', 'workoutsession', 'barcode', 'weeklyreview', 'measurements'];
+const AUTHED = ['home', 'scanner', 'foodlog', 'plan', 'tracker', 'ar', 'profile', 'settings', 'progress', 'health', 'mealstudio', 'workoutsession', 'barcode', 'weeklyreview', 'measurements', 'coach', 'grocery', 'restaurant'];
 
 function App() {
   const { C } = useTheme();
@@ -163,6 +166,9 @@ function App() {
       case 'barcode':     return <BarcodeScanScreen user={user} onNavigate={navigate} />;
       case 'weeklyreview': return <WeeklyReviewScreen user={user} onNavigate={navigate} />;
       case 'measurements': return <MeasurementsScreen user={user} onNavigate={navigate} />;
+      case 'coach':       return <CoachChatScreen user={user} onNavigate={navigate} />;
+      case 'grocery':     return <GroceryListScreen user={user} onNavigate={navigate} />;
+      case 'restaurant':  return <RestaurantScreen user={user} onNavigate={navigate} />;
       default:        return null;
     }
   };

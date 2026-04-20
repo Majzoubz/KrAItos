@@ -6,6 +6,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
 import { callAI, parseJSON } from '../utils/api';
+import { isVoiceAvailable, startVoice } from '../utils/voice';
 
 const { width } = Dimensions.get('window');
 const TODAY = new Date().toDateString();
@@ -28,6 +29,8 @@ export default function FoodLogScreen({ user, onNavigate }) {
   const [fat, setFat]               = useState('');
   const [mealTime, setMealTime]     = useState('Breakfast');
   const [selectedDate, setSelectedDate] = useState(TODAY);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceParsing, setVoiceParsing]     = useState(false);
 
   const FOOD_KEY = KEYS.FOODLOG(user.uid, selectedDate);
 
@@ -84,6 +87,58 @@ export default function FoodLogScreen({ user, onNavigate }) {
     setShowAdd(false);
   };
 
+  const handleVoiceTranscript = async (transcript) => {
+    if (!transcript?.trim()) return;
+    setVoiceParsing(true);
+    try {
+      const sys = 'You are a nutrition logger. The user spoke a list of foods they just ate. Parse it into structured items with reasonable portion-based macro estimates. Return ONLY valid JSON: {"items":[{"name":"item with portion","mealTime":"Breakfast|Morning Snack|Lunch|Afternoon Snack|Dinner|Late Snack","calories":number,"protein":number,"carbs":number,"fat":number}]}. No markdown. Pick mealTime based on current time of day if user did not specify.';
+      const now = new Date();
+      const userMsg = `Current time: ${now.toLocaleTimeString('en-US')}. Spoken log: "${transcript}"`;
+      const raw = await callAI(sys, userMsg);
+      const parsed = parseJSON(raw, null);
+      const items = parsed?.items || [];
+      if (!items.length) {
+        Alert.alert('No foods detected', 'Try saying something like "I had a chicken burrito and a Coke."');
+        return;
+      }
+      const newEntries = items.map((it, idx) => ({
+        id: Date.now() + idx,
+        name: it.name || 'Voice item',
+        mealTime: it.mealTime || 'Lunch',
+        calories: Math.round(it.calories || 0),
+        protein:  Math.round(it.protein  || 0),
+        carbs:    Math.round(it.carbs    || 0),
+        fat:      Math.round(it.fat      || 0),
+        addedAt: Date.now(),
+        source: 'voice',
+      }));
+      const updated = [...log, ...newEntries];
+      await Storage.set(FOOD_KEY, updated);
+      setLog(updated);
+      Alert.alert('Logged', `${newEntries.length} item${newEntries.length === 1 ? '' : 's'} added from "${transcript}"`);
+    } catch (e) {
+      Alert.alert('Voice log failed', e.message || 'Could not parse what you said.');
+    } finally {
+      setVoiceParsing(false);
+    }
+  };
+
+  const startVoiceLog = () => {
+    if (!isVoiceAvailable()) {
+      Alert.alert('Voice not supported', 'Voice logging works in Chrome / Safari on the web. On mobile, use the + Add button or AI Scan.');
+      return;
+    }
+    setVoiceListening(true);
+    startVoice({
+      onResult: (t) => handleVoiceTranscript(t),
+      onError: (e) => {
+        setVoiceListening(false);
+        Alert.alert('Voice error', e?.message || 'Microphone error.');
+      },
+      onEnd: () => setVoiceListening(false),
+    });
+  };
+
   const deleteEntry = async (id) => {
     Alert.alert('Remove item', 'Remove this entry from your log?', [
       { text: 'Cancel', style: 'cancel' },
@@ -137,9 +192,20 @@ export default function FoodLogScreen({ user, onNavigate }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <Text style={s.titleBarText}>Nutrition</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(!showAdd)}>
-          <Text style={s.addBtnText}>{showAdd ? 'Cancel' : '+ Add'}</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity
+            style={[s.voiceBtn, voiceListening && s.voiceBtnActive]}
+            onPress={startVoiceLog}
+            disabled={voiceListening || voiceParsing}
+          >
+            {voiceParsing
+              ? <ActivityIndicator color={C.bg} size="small" />
+              : <Text style={s.voiceBtnText}>{voiceListening ? '🎙️ …' : '🎙️'}</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(!showAdd)}>
+            <Text style={s.addBtnText}>{showAdd ? 'Cancel' : '+ Add'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Date nav */}
@@ -161,6 +227,24 @@ export default function FoodLogScreen({ user, onNavigate }) {
 
         {!loading && (
           <>
+            {/* Restaurant mode CTA */}
+            <TouchableOpacity
+              onPress={() => onNavigate('restaurant')}
+              activeOpacity={0.85}
+              style={[s.studioCard, { borderColor: C.green + '40', marginBottom: 10 }]}
+            >
+              <View style={s.studioBadge}>
+                <Text style={{ color: C.bg, fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>NEW</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.studioTitle}>🍽️ Restaurant mode</Text>
+                <Text style={s.studioSub}>
+                  Best macro picks from your favorite chain · fits your remaining calories
+                </Text>
+              </View>
+              <Text style={s.studioArrow}>→</Text>
+            </TouchableOpacity>
+
             {/* AI Meal Studio CTA */}
             <TouchableOpacity
               onPress={() => onNavigate('mealstudio')}
@@ -466,6 +550,13 @@ const makeStyles = (C) => StyleSheet.create({
   titleBarText: { color: C.white, fontSize: 20, fontWeight: '900' },
   addBtn: { backgroundColor: C.green, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10 },
   addBtnText: { color: C.bg, fontWeight: '900', fontSize: 13 },
+  voiceBtn: {
+    backgroundColor: C.surface, paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 10, marginRight: 8, borderWidth: 1, borderColor: C.border,
+    minWidth: 44, alignItems: 'center', justifyContent: 'center',
+  },
+  voiceBtnActive: { backgroundColor: C.danger + '40', borderColor: C.danger },
+  voiceBtnText: { fontSize: 14, fontWeight: '900' },
   dateNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border },
   dateArrow: { width: 32, height: 32, backgroundColor: C.surface, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   dateArrowText: { color: C.white, fontWeight: '900', fontSize: 16 },

@@ -11,6 +11,9 @@ import { Storage, KEYS, subscribeSyncStatus } from '../utils/storage';
 import { OfflineBanner } from './../components/UI';
 import AdaptiveCoachingCard from '../components/AdaptiveCoachingCard';
 import ChangeLogCard from '../components/ChangeLogCard';
+import WaterCard from '../components/WaterCard';
+import StreakBadgesCard from '../components/StreakBadgesCard';
+import { computeLogStreak } from '../utils/streaks';
 import { Auth } from '../utils/auth';
 import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
 import { scheduleMealReminders } from '../utils/notifications';
@@ -88,7 +91,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   const [genError, setGenError]       = useState(null);
   const [foodLog, setFoodLog]         = useState([]);
   const [healthToday, setHealthToday] = useState(null);
-  const [streak, setStreak]           = useState(user.streak || 0);
+  const [streak, setStreak]           = useState(0);
   const [latestReview, setLatestReview] = useState(null);
   const [quickLogOpen, setQuickLogOpen] = useState(false);
   const today                         = new Date();
@@ -158,6 +161,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
     setFoodLog(Array.isArray(log) ? log : []);
     setHealthToday(hd);
     setLatestReview(rev);
+    computeLogStreak(user.uid).then(setStreak).catch(() => {});
     if (hAvail) {
       syncTodaySteps(user.email || user.uid)
         .then((steps) => { if (steps != null) getHealthDay(user.email || user.uid).then(setHealthToday); });
@@ -278,6 +282,9 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
             </>
           )}
 
+          {/* Water tracking */}
+          {plan && <WaterCard uid={user.uid} />}
+
           {/* Today's Score + 7-day streak ring */}
           {plan && (
             <View style={{ marginHorizontal: -16 }}>
@@ -290,6 +297,25 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
                 onPress={() => onNavigate('progress')}
               />
             </View>
+          )}
+
+          {/* Weekly badges */}
+          {plan && <StreakBadgesCard uid={user.uid} plan={plan} />}
+
+          {/* Coach quick-link */}
+          {plan && (
+            <TouchableOpacity
+              style={s.coachCard}
+              onPress={() => onNavigate('coach')}
+              activeOpacity={0.85}
+            >
+              <View style={s.coachIconWrap}><Text style={{ fontSize: 22 }}>💬</Text></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.coachTitle}>Ask your coach</Text>
+                <Text style={s.coachSub}>"What should I eat with {Math.max(target - consumed, 0)} cals left?"</Text>
+              </View>
+              <Text style={s.coachArrow}>→</Text>
+            </TouchableOpacity>
           )}
 
           {/* Adaptive coaching */}
@@ -531,6 +557,18 @@ const makeStyles = (C) => StyleSheet.create({
   },
   healthTitle: { color: C.white, fontSize: 16, fontWeight: '900', letterSpacing: 0.2 },
   healthSub:   { color: C.muted, fontSize: 11, marginTop: 2 },
+  coachCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: C.card,
+    borderRadius: 16, padding: 14, marginBottom: 12,
+    borderWidth: 1.5, borderColor: C.green + '60',
+  },
+  coachIconWrap: {
+    width: 44, height: 44, borderRadius: 12, backgroundColor: C.green + '22',
+    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+  },
+  coachTitle: { color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 0.2 },
+  coachSub:   { color: C.muted, fontSize: 11, marginTop: 2 },
+  coachArrow: { color: C.green, fontSize: 22, fontWeight: '900', marginLeft: 8 },
 
   emptyLog: {
     backgroundColor: C.card, borderRadius: 20, padding: 28,
