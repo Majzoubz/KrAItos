@@ -194,6 +194,13 @@ export default function FoodLogScreen({ user, onNavigate }) {
         <Text style={s.titleBarText}>Nutrition</Text>
         <View style={{ flexDirection: 'row' }}>
           <TouchableOpacity
+            style={s.iconHeaderBtn}
+            onPress={() => onNavigate('grocery')}
+            accessibilityLabel="Grocery list"
+          >
+            <Text style={s.iconHeaderText}>🛒</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[s.voiceBtn, voiceListening && s.voiceBtnActive]}
             onPress={startVoiceLog}
             disabled={voiceListening || voiceParsing}
@@ -557,6 +564,12 @@ const makeStyles = (C) => StyleSheet.create({
   },
   voiceBtnActive: { backgroundColor: C.danger + '40', borderColor: C.danger },
   voiceBtnText: { fontSize: 14, fontWeight: '900' },
+  iconHeaderBtn: {
+    backgroundColor: C.surface, paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 10, marginRight: 8, borderWidth: 1, borderColor: C.border,
+    minWidth: 44, alignItems: 'center', justifyContent: 'center',
+  },
+  iconHeaderText: { fontSize: 14 },
   dateNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border },
   dateArrow: { width: 32, height: 32, backgroundColor: C.surface, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   dateArrowText: { color: C.white, fontWeight: '900', fontSize: 16 },

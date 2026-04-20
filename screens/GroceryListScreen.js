@@ -44,14 +44,21 @@ export default function GroceryListScreen({ user, onNavigate }) {
       Alert.alert('No meal plan', 'Generate a plan from the Home screen first.');
       return;
     }
+    const allItems = plan.mealPlan.flatMap(m => (m.foods || []).map(f => `${m.meal}: ${f}`));
+    if (allItems.length === 0) {
+      setError('Your meal plan has meals but no foods listed. Try regenerating your plan from Home.');
+      return;
+    }
     setGenerating(true);
     setError(null);
     try {
-      const allItems = plan.mealPlan.flatMap(m => (m.foods || []).map(f => `${m.meal}: ${f}`)).join('\n');
       const sys = 'You are a meal planning assistant. Convert a list of meal foods (with portion strings like "2 eggs", "1 cup rice") into a consolidated weekly grocery list. Multiply portions by 7 days where appropriate. Group identical items. Categorize each item into one of: Produce, Protein, Dairy, Pantry, Grains, Frozen, Bakery, Other. Return ONLY valid JSON with this exact shape: {"categories":{"Produce":[{"name":"Spinach","qty":"2 bags"}],"Protein":[{"name":"Chicken breast","qty":"3 lbs"}]}}. No markdown, no commentary.';
-      const raw = await callAI(sys, 'Build my weekly grocery list from these planned foods (assume 7 days):\n' + allItems);
+      const raw = await callAI(sys, 'Build my weekly grocery list from these planned foods (assume 7 days):\n' + allItems.join('\n'));
       const parsed = parseJSON(raw, null);
-      if (!parsed?.categories) throw new Error('AI returned an unexpected format.');
+      if (!parsed?.categories) {
+        console.warn('[Grocery] AI response did not contain "categories":', raw?.slice(0, 400));
+        throw new Error('AI returned an unexpected format. Tap Generate again — sometimes it needs a second try.');
+      }
       // Normalize into our shape
       const normalized = {};
       for (const cat of Object.keys(parsed.categories)) {
@@ -101,7 +108,7 @@ export default function GroceryListScreen({ user, onNavigate }) {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
-        <TouchableOpacity onPress={() => onNavigate('plan')} style={s.backBtn}>
+        <TouchableOpacity onPress={() => onNavigate('foodlog')} style={s.backBtn}>
           <Text style={s.backText}>‹ Back</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -125,19 +132,30 @@ export default function GroceryListScreen({ user, onNavigate }) {
           </View>
         )}
 
-        {!loading && plan && !list && !generating && (
-          <View style={s.emptyBox}>
-            <Text style={s.emptyIcon}>🛒</Text>
-            <Text style={s.emptyTitle}>Build your grocery list</Text>
-            <Text style={s.emptyText}>
-              We'll consolidate everything from your weekly meal plan, multiply for 7 days, and group it by aisle.
-            </Text>
-            <TouchableOpacity style={s.cta} onPress={generate}>
-              <Text style={s.ctaText}>Generate list</Text>
-            </TouchableOpacity>
-            {error && <Text style={s.error}>{error}</Text>}
-          </View>
-        )}
+        {!loading && plan && !list && !generating && (() => {
+          const mealCount = plan?.mealPlan?.length || 0;
+          const foodCount = (plan?.mealPlan || []).reduce((a, m) => a + (m.foods?.length || 0), 0);
+          const hasFoods = foodCount > 0;
+          return (
+            <View style={s.emptyBox}>
+              <Text style={s.emptyIcon}>🛒</Text>
+              <Text style={s.emptyTitle}>Build your grocery list</Text>
+              <Text style={s.emptyText}>
+                {hasFoods
+                  ? `We'll consolidate ${foodCount} foods from ${mealCount} meals, multiply for 7 days, and group by aisle.`
+                  : 'Your meal plan has no foods listed yet. Regenerate your plan from Home first.'}
+              </Text>
+              <TouchableOpacity
+                style={[s.cta, !hasFoods && { opacity: 0.4 }]}
+                onPress={generate}
+                disabled={!hasFoods}
+              >
+                <Text style={s.ctaText}>Generate list</Text>
+              </TouchableOpacity>
+              {error && <Text style={s.error}>{error}</Text>}
+            </View>
+          );
+        })()}
 
         {generating && (
           <View style={s.emptyBox}>
