@@ -10,6 +10,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
 import { Auth } from '../utils/auth';
 import { generatePlanFromOnboarding, adaptPlan } from '../utils/planGenerator';
+import { scheduleMealReminders } from '../utils/notifications';
 import { buildWeeklyContext, shouldAutoAdapt } from '../utils/planAdapter';
 
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
@@ -144,6 +145,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
       setPlan(p);
       setLoadingPlan(false);
       tryAutoAdapt(p);
+      if (Array.isArray(p.mealPlan)) scheduleMealReminders(p.mealPlan).catch(() => {});
     } else {
       setLoadingPlan(false);
       tryAutoGenerate();

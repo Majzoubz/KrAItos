@@ -5,6 +5,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
+import { setNotificationsEnabled, requestPermission, scheduleMealReminders } from '../utils/notifications';
+import { Storage, KEYS } from '../utils/storage';
+import { Auth } from '../utils/auth';
 const SETTINGS_KEY = 'greengain_settings';
 
 const LANGUAGES = [
@@ -161,7 +164,29 @@ export default function SettingsScreen({ onNavigate }) {
               </View>
               <Switch
                 value={settings.reminders}
-                onValueChange={(v) => update('reminders', v)}
+                onValueChange={async (v) => {
+                  if (v) {
+                    const granted = await requestPermission();
+                    if (!granted) {
+                      update('reminders', false);
+                      await setNotificationsEnabled(false);
+                      Alert.alert('Permission needed', 'Enable notifications in your device or browser settings to receive meal reminders.');
+                      return;
+                    }
+                    update('reminders', true);
+                    await setNotificationsEnabled(true);
+                    try {
+                      const u = await Auth.getCurrentUser();
+                      if (u) {
+                        const plan = await Storage.get(KEYS.PLAN(u.email || u.uid));
+                        if (plan?.mealPlan) await scheduleMealReminders(plan.mealPlan, { force: true });
+                      }
+                    } catch {}
+                  } else {
+                    update('reminders', false);
+                    await setNotificationsEnabled(false);
+                  }
+                }}
                 trackColor={{ false: C.surface, true: C.green }}
                 thumbColor={C.white}
               />
