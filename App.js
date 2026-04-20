@@ -19,6 +19,7 @@ import ProfileScreen       from './screens/ProfileScreen';
 import SettingsScreen      from './screens/SettingsScreen';
 import BottomNav           from './components/BottomNav';
 import WebLayout           from './components/WebLayout';
+import SplashScreen        from './components/SplashScreen';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -35,7 +36,16 @@ function App() {
   const [error, setError]   = useState(null);
 
   useEffect(() => {
+    const MIN_SPLASH_MS = 2200;
+    const splashStart = Date.now();
+    const advance = (target) => {
+      const elapsed = Date.now() - splashStart;
+      const wait = Math.max(0, MIN_SPLASH_MS - elapsed);
+      setTimeout(() => setScreen(target), wait);
+    };
     const init = async () => {
+      let target = 'welcome';
+      let nextUser = null;
       try {
         const legacySession = await AsyncStorage.getItem('fitlife_session_v2');
         if (legacySession) {
@@ -50,17 +60,12 @@ function App() {
         const u = await Auth.getSession();
         if (u) {
           const onboardingDone = await AsyncStorage.getItem(ONBOARDING_KEY);
-          if (!onboardingDone) {
-            setUser(u);
-            setScreen('onboarding');
-            return;
-          }
-          setUser(u);
-          setScreen('home');
-          return;
+          nextUser = u;
+          target = onboardingDone ? 'home' : 'onboarding';
         }
       } catch {}
-      setScreen('welcome');
+      if (nextUser) setUser(nextUser);
+      advance(target);
     };
     init();
   }, []);
@@ -119,14 +124,7 @@ function App() {
   const renderScreen = () => {
     switch (screen) {
       case 'loading':
-        return (
-          <View style={s.loading}>
-            <View style={s.splashGlow} />
-            <Image source={require('./assets/logo.png')} style={s.splashLogo} resizeMode="contain" />
-            <Text style={s.splashName}>KrAItos</Text>
-            <ActivityIndicator color={C.green} size="large" style={{ marginTop: 32 }} />
-          </View>
-        );
+        return <SplashScreen />;
       case 'welcome':
         return <WelcomeScreen onStart={() => setScreen('auth')} />;
       case 'auth':
