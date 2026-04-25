@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { generatePlanFromOnboarding } from '../utils/planGenerator';
 
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
@@ -73,6 +74,11 @@ const DEFAULT_DATA = {
 
 export default function MyInfoScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { units: globalUnits, isRTL } = useI18n();
+  // The onboarding data has its own legacy `units` field, but the user's
+  // current preference (set in Settings) is the source of truth for what
+  // we render here.
+  const effectiveUnits = globalUnits === 'imperial' ? 'Imperial' : 'Metric';
   const s = makeStyles(C);
   const [data, setData] = useState(DEFAULT_DATA);
   const [original, setOriginal] = useState(DEFAULT_DATA);
@@ -115,18 +121,23 @@ export default function MyInfoScreen({ user, onNavigate }) {
     }
     setSaving(true);
     try {
-      await AsyncStorage.setItem(ONBOARDING_DATA_KEY, JSON.stringify(data));
+      // Keep the legacy `units` field on the onboarding blob in sync with
+      // the user's current Settings preference so the plan generator uses
+      // the right unit system.
+      const synced = { ...data, units: effectiveUnits };
+      await AsyncStorage.setItem(ONBOARDING_DATA_KEY, JSON.stringify(synced));
       try {
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000));
         await Promise.race([
-          generatePlanFromOnboarding(data, user.email || user.uid),
+          generatePlanFromOnboarding(synced, user.email || user.uid),
           timeout,
         ]);
       } catch (e) {
         console.warn('Plan regen failed:', e.message);
         // Still save the info even if plan regen fails — Home will retry
       }
-      setOriginal(data);
+      setData(synced);
+      setOriginal(synced);
       const msg = 'Your info has been updated and your plan has been regenerated.';
       if (Platform.OS === 'web') {
         if (typeof window !== 'undefined') window.alert(msg);
@@ -210,7 +221,7 @@ export default function MyInfoScreen({ user, onNavigate }) {
     if (id === 'birthday') {
       body = renderInput('birthday', 'DD/MM/YYYY');
     } else if (id === 'height') {
-      if (data.units === 'Imperial') {
+      if (effectiveUnits === 'Imperial') {
         body = (
           <View style={{ flexDirection: 'row' }}>
             <TextInput
@@ -245,10 +256,10 @@ export default function MyInfoScreen({ user, onNavigate }) {
         body = renderInput('height', 'cm', 'numeric');
       }
     } else if (id === 'weight' || id === 'maxWeight' || id === 'targetWeight') {
-      const unit = data.units === 'Metric' ? 'kg' : 'lbs';
+      const unit = effectiveUnits === 'Metric' ? 'kg' : 'lbs';
       body = renderInput(id, unit, 'numeric');
     } else if (id === 'weeklyRate') {
-      body = renderInput('weeklyRate', data.units === 'Metric' ? '0.5 kg/week' : '1 lb/week');
+      body = renderInput('weeklyRate', effectiveUnits === 'Metric' ? '0.5 kg/week' : '1 lb/week');
     } else if (id === 'exerciseType') {
       body = renderMultiChips('exerciseType', MULTI_EXERCISE_TYPES);
     } else if (id === 'proteinIntake') {
@@ -271,7 +282,7 @@ export default function MyInfoScreen({ user, onNavigate }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <TouchableOpacity onPress={() => onNavigate('profile')} style={s.backBtn}>
-          <Text style={s.backText}>‹ Back</Text>
+          <Text style={s.backText}>{isRTL ? '› Back' : '‹ Back'}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.titleBarText}>My Info</Text>

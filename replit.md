@@ -95,3 +95,9 @@ Returning users who already completed onboarding skip directly to Home after log
 - **Mobile / Narrow web**: Bottom navigation bar (`BottomNav`)
 - **Wide web (>768px)**: Sidebar layout (`WebLayout`)
 - **Units**: Supports Metric (kg/cm) and Imperial (lbs/ft-in) throughout onboarding
+
+## Translation Audit
+Run `node scripts/audit-translations.js` to scan all `t('...')` calls across `screens/`, `components/`, `utils/` and verify every key exists in all 5 languages. Exits non-zero on missing keys. Run after adding new UI strings.
+
+## Nutrition Tab Layout (April 2026)
+The Nutrition tab no longer uses two large stacked CTA cards. Quick actions are now a 2×2 grid (`s.quickGrid` in `screens/FoodlogScreen.js`): AI Meal Studio · Restaurant mode · Photo scan · Barcode. The +Add button remains in the header for manual entries, plus the 🛒 grocery and 🎙️ voice buttons.

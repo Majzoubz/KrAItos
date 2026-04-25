@@ -6,6 +6,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 import {
   generateMealFromIngredients, generateWeeklyPlanFromGroceries,
@@ -865,6 +866,7 @@ function FridgeTab({ uid, profile, dailyCalories, onAddToLog }) {
 
 export default function MealStudioScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { isRTL } = useI18n();
   const s = makeStyles(C);
   const uid = user?.email || user?.uid;
   const [tab, setTab] = useState('ingredients');
@@ -949,7 +951,7 @@ export default function MealStudioScreen({ user, onNavigate }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <TouchableOpacity onPress={() => { hSelect(); onNavigate('foodlog'); }} style={s.backBtn}>
-          <Text style={s.backTxt}>‹</Text>
+          <Text style={s.backTxt}>{isRTL ? '›' : '‹'}</Text>
         </TouchableOpacity>
         <Text style={s.title}>AI Meal Studio</Text>
         <TouchableOpacity onPress={() => { hSelect(); refreshSaved(); setShowSaved(true); }} style={s.savedPill}>

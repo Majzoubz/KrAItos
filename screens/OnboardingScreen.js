@@ -4,6 +4,7 @@ import {
   TextInput, Animated, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { tick as hTick, select as hSelect, success as hSuccess } from '../utils/haptics';
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -91,6 +92,7 @@ function WheelColumn({ items, value, onChange, width = 70, itemHeight = 44, form
 
 function DateOfBirthPicker({ value, onChange }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const today = new Date();
   const maxYear = today.getFullYear() - 13;
   const minYear = 1925;
@@ -152,7 +154,7 @@ function DateOfBirthPicker({ value, onChange }) {
           borderRadius: 999, backgroundColor: C.greenGlow2, borderWidth: 1, borderColor: C.green + '40',
         }}>
           <Text style={{ color: C.green, fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>
-            {age} YEARS OLD
+            {t('onboarding.dob.yearsOld', { age })}
           </Text>
         </View>
       </View>
@@ -162,6 +164,7 @@ function DateOfBirthPicker({ value, onChange }) {
 
 function RulerPicker({ min, max, step = 1, value, unit, decimals = 0, onChange, formatBig, defaultValue }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const TICK_W = 12;
   const ref = useRef(null);
   const [containerW, setContainerW] = useState(0);
@@ -259,8 +262,8 @@ function RulerPicker({ min, max, step = 1, value, unit, decimals = 0, onChange, 
         }} />
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, paddingHorizontal: 6 }}>
-        <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700' }}>Min {formatBig ? formatBig(min) : min} {unit}</Text>
-        <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700' }}>Max {formatBig ? formatBig(max) : max} {unit}</Text>
+        <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700' }}>{t('onboarding.ruler.min')} {formatBig ? formatBig(min) : min} {unit}</Text>
+        <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700' }}>{t('onboarding.ruler.max')} {formatBig ? formatBig(max) : max} {unit}</Text>
       </View>
     </View>
   );
@@ -296,6 +299,7 @@ const STEPS = [
 
 function SectionTransition({ section, onContinue }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const s = makeStyles(C);
   const ts = makeTs(C);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -312,13 +316,13 @@ function SectionTransition({ section, onContinue }) {
     return () => { clearInterval(interval); clearTimeout(timer); };
   }, []);
 
-  const sectionData = {
-    basics: { title: 'Getting to know you', desc: 'Let\'s learn about your body and lifestyle', icon: '◎' },
-    goal: { title: 'Analyzing your profile', desc: 'Setting up your personalized targets', icon: '◈' },
-    program: { title: 'Designing your program', desc: 'Building your custom nutrition & training plan', icon: '◇' },
+  const sectionIcons = { basics: '◎', goal: '◈', program: '◇' };
+  const key = sectionIcons[section] ? section : 'basics';
+  const info = {
+    title: t(`onboarding.section.${key}.title`),
+    desc: t(`onboarding.section.${key}.desc`),
+    icon: sectionIcons[key],
   };
-
-  const info = sectionData[section] || sectionData.basics;
 
   return (
     <View style={ts.container}>
@@ -339,20 +343,96 @@ function SectionTransition({ section, onContinue }) {
   );
 }
 
+function computeBuildingFacts(data) {
+  const isImperial = data?.units === 'Imperial';
+  const cmRaw = parseFloat(data?.height);
+  const cm = !isNaN(cmRaw) && cmRaw > 0 ? cmRaw : 170;
+  const wRaw = parseFloat(data?.weight);
+  const kg = isImperial
+    ? (!isNaN(wRaw) ? wRaw * 0.453592 : 75)
+    : (!isNaN(wRaw) ? wRaw : 75);
+  let age = 30;
+  try {
+    const dob = parseDOB(data?.birthday);
+    if (dob) age = ageFrom(dob.d, dob.mo, dob.y);
+  } catch {}
+  const isMale = (data?.gender || '').toString().toLowerCase().startsWith('m');
+  const bmr = Math.round(10 * kg + 6.25 * cm - 5 * age + (isMale ? 5 : -161));
+
+  const actMap = { 'Sedentary': 1.2, 'Light': 1.375, 'Moderate': 1.55, 'Active': 1.725, 'Very Active': 1.9 };
+  const tdee = Math.round(bmr * (actMap[data?.activityLevel] || 1.45));
+
+  let calTarget = tdee;
+  const goal = (data?.goal || '').toLowerCase();
+  const rate = parseFloat(data?.weeklyRate);
+  const dailyDelta = !isNaN(rate) ? Math.round((rate * 7700) / 7) : 0;
+  if (goal.includes('lose') || goal.includes('cut')) calTarget = Math.max(1200, tdee - (dailyDelta || 500));
+  else if (goal.includes('gain') || goal.includes('bulk') || goal.includes('muscle')) calTarget = tdee + (dailyDelta || 300);
+
+  let proteinPerKg = 1.8;
+  const pi = (data?.proteinIntake || '').toLowerCase();
+  if (pi.includes('high')) proteinPerKg = 2.2;
+  else if (pi.includes('low')) proteinPerKg = 1.4;
+  const proteinG = Math.round(kg * proteinPerKg);
+
+  const cd = (data?.calDistribution || '').toLowerCase();
+  let meals = 4;
+  if (cd.includes('3') || cd.includes('three')) meals = 3;
+  else if (cd.includes('5') || cd.includes('five')) meals = 5;
+  else if (cd.includes('6') || cd.includes('six')) meals = 6;
+
+  const freq = parseInt(data?.exerciseFreq, 10);
+  const workouts = !isNaN(freq) && freq > 0 ? `${freq}× / week` : `${Math.min(5, (data?.exerciseType?.length || 3))}× / week`;
+
+  const fmt = (n) => n.toLocaleString();
+  return {
+    metrics: `${Math.round(cm)} cm · ${Math.round(kg)} kg · ${age}y`,
+    bmr: `${fmt(bmr)} kcal`,
+    calories: `${fmt(calTarget)} kcal/day`,
+    protein: `${proteinG} g/day`,
+    meals: `${meals} meals/day · ${workouts}`,
+  };
+}
+
+function TypingText({ text, speed = 22, style, onDone }) {
+  const [shown, setShown] = useState('');
+  const [caret, setCaret] = useState(true);
+  useEffect(() => {
+    setShown('');
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setShown(text.slice(0, i));
+      if (i >= text.length) {
+        clearInterval(id);
+        if (onDone) onDone();
+      }
+    }, speed);
+    return () => clearInterval(id);
+  }, [text, speed]);
+  useEffect(() => {
+    const id = setInterval(() => setCaret(c => !c), 480);
+    return () => clearInterval(id);
+  }, []);
+  return <Text style={style}>{shown}<Text style={{ opacity: caret ? 1 : 0 }}>▍</Text></Text>;
+}
+
 function BuildingScreen({ onDone, data, userEmail }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const s = makeStyles(C);
   const bs = makeBs(C);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [phase, setPhase] = useState(0);
   const [apiDone, setApiDone] = useState(false);
   const [animDone, setAnimDone] = useState(false);
+  const facts = useRef(computeBuildingFacts(data)).current;
   const phases = [
-    'Analyzing your body metrics...',
-    'Calculating metabolic rate...',
-    'Optimizing macro targets...',
-    'Building workout structure...',
-    'Finalizing your program...',
+    { label: t('onboarding.building.phase1'), detail: facts.metrics },
+    { label: t('onboarding.building.phase2'), detail: `BMR ≈ ${facts.bmr}` },
+    { label: t('onboarding.building.phase3'), detail: `${facts.calories} · ${facts.protein} protein` },
+    { label: t('onboarding.building.phase4'), detail: facts.meals },
+    { label: t('onboarding.building.phase5'), detail: '✓' },
   ];
 
   useEffect(() => {
@@ -362,8 +442,8 @@ function BuildingScreen({ onDone, data, userEmail }) {
         if (p >= phases.length - 1) return p;
         return p + 1;
       });
-    }, 800);
-    const timer = setTimeout(() => setAnimDone(true), 4500);
+    }, 900);
+    const timer = setTimeout(() => setAnimDone(true), 5000);
 
     let cancelled = false;
     const genPlan = async () => {
@@ -392,18 +472,29 @@ function BuildingScreen({ onDone, data, userEmail }) {
         <View style={bs.logoWrap}>
           <Image source={require('../assets/logo.png')} style={bs.logoImage} resizeMode="contain" />
         </View>
-        <Text style={bs.title}>Building Your Program</Text>
-        <Text style={bs.subtitle}>This will just take a moment</Text>
+        <Text style={bs.title}>{t('onboarding.building.title')}</Text>
+        <Text style={bs.subtitle}>{t('onboarding.building.subtitle')}</Text>
         <View style={bs.phaseList}>
-          {phases.map((p, i) => (
-            <View key={i} style={bs.phaseRow}>
-              <View style={[bs.phaseDot, i <= phase && bs.phaseDotActive]}>
-                {i < phase && <Text style={bs.phaseCheck}>✓</Text>}
-                {i === phase && <ActivityIndicator size="small" color={C.green} />}
+          {phases.map((p, i) => {
+            if (i > phase) return null;
+            const isCurrent = i === phase;
+            return (
+              <View key={i} style={bs.phaseRow}>
+                <View style={[bs.phaseDot, bs.phaseDotActive]}>
+                  {!isCurrent && <Text style={bs.phaseCheck}>✓</Text>}
+                  {isCurrent && <ActivityIndicator size="small" color={C.green} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  {isCurrent
+                    ? <TypingText text={p.label} style={[bs.phaseText, bs.phaseTextActive]} />
+                    : <Text style={[bs.phaseText, bs.phaseTextActive]}>{p.label}</Text>}
+                  {!!p.detail && !isCurrent && (
+                    <Text style={bs.phaseDetail}>{p.detail}</Text>
+                  )}
+                </View>
               </View>
-              <Text style={[bs.phaseText, i <= phase && bs.phaseTextActive]}>{p}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </Animated.View>
     </View>
@@ -412,6 +503,7 @@ function BuildingScreen({ onDone, data, userEmail }) {
 
 export default function OnboardingScreen({ onComplete, user }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const s = makeStyles(C);
   const [step, setStep] = useState(0);
   const [showTransition, setShowTransition] = useState(null);
@@ -526,8 +618,8 @@ export default function OnboardingScreen({ onComplete, user }) {
         return (
           <View style={s.cardGrid}>
             {[
-              { val: 'Male', icon: '♂', desc: 'Male physiology' },
-              { val: 'Female', icon: '♀', desc: 'Female physiology' },
+              { val: 'Male', icon: '♂', label: t('onboarding.gender.male.label'), desc: t('onboarding.gender.male.desc') },
+              { val: 'Female', icon: '♀', label: t('onboarding.gender.female.label'), desc: t('onboarding.gender.female.desc') },
             ].map(g => (
               <TouchableOpacity
                 key={g.val}
@@ -535,7 +627,7 @@ export default function OnboardingScreen({ onComplete, user }) {
                 onPress={() => tapField('gender', g.val)}
               >
                 <Text style={[s.bigCardIcon, data.gender === g.val && { color: C.green }]}>{g.icon}</Text>
-                <Text style={[s.bigCardLabel, data.gender === g.val && s.bigCardLabelActive]}>{g.val}</Text>
+                <Text style={[s.bigCardLabel, data.gender === g.val && s.bigCardLabelActive]}>{g.label}</Text>
                 <Text style={s.bigCardDesc}>{g.desc}</Text>
               </TouchableOpacity>
             ))}
@@ -546,15 +638,15 @@ export default function OnboardingScreen({ onComplete, user }) {
         return (
           <View style={s.cardGrid}>
             {[
-              { val: 'Metric', desc: 'kg, cm' },
-              { val: 'Imperial', desc: 'lbs, ft/in' },
+              { val: 'Metric', label: t('onboarding.units.metric.label'), desc: t('onboarding.units.metric.desc') },
+              { val: 'Imperial', label: t('onboarding.units.imperial.label'), desc: t('onboarding.units.imperial.desc') },
             ].map(u => (
               <TouchableOpacity
                 key={u.val}
                 style={[s.bigCard, data.units === u.val && s.bigCardActive]}
                 onPress={() => tapField('units', u.val)}
               >
-                <Text style={[s.bigCardLabel, data.units === u.val && s.bigCardLabelActive]}>{u.val}</Text>
+                <Text style={[s.bigCardLabel, data.units === u.val && s.bigCardLabelActive]}>{u.label}</Text>
                 <Text style={s.bigCardDesc}>{u.desc}</Text>
               </TouchableOpacity>
             ))}
@@ -636,23 +728,23 @@ export default function OnboardingScreen({ onComplete, user }) {
 
       case 'weightTrend':
         return renderIconOptions([
-          { val: 'Gaining', icon: '↗', desc: 'Weight has been going up' },
-          { val: 'Stable', icon: '→', desc: 'Weight has stayed roughly the same' },
-          { val: 'Losing', icon: '↘', desc: 'Weight has been going down' },
-          { val: 'Fluctuating', icon: '↕', desc: 'Weight has been up and down' },
+          { val: 'Gaining', icon: '↗', label: t('onboarding.weightTrend.gaining.label'), desc: t('onboarding.weightTrend.gaining.desc') },
+          { val: 'Stable', icon: '→', label: t('onboarding.weightTrend.stable.label'), desc: t('onboarding.weightTrend.stable.desc') },
+          { val: 'Losing', icon: '↘', label: t('onboarding.weightTrend.losing.label'), desc: t('onboarding.weightTrend.losing.desc') },
+          { val: 'Fluctuating', icon: '↕', label: t('onboarding.weightTrend.fluctuating.label'), desc: t('onboarding.weightTrend.fluctuating.desc') },
         ], 'weightTrend');
 
       case 'bodyFat':
         return (
           <View>
             {[
-              { val: '5-9%', label: 'Very Lean', bar: 1 },
-              { val: '10-14%', label: 'Lean', bar: 2 },
-              { val: '15-19%', label: 'Athletic', bar: 3 },
-              { val: '20-24%', label: 'Average', bar: 4 },
-              { val: '25-29%', label: 'Above Average', bar: 5 },
-              { val: '30-34%', label: 'High', bar: 6 },
-              { val: '35%+', label: 'Very High', bar: 7 },
+              { val: '5-9%', label: t('onboarding.bodyFat.veryLean'), bar: 1 },
+              { val: '10-14%', label: t('onboarding.bodyFat.lean'), bar: 2 },
+              { val: '15-19%', label: t('onboarding.bodyFat.athletic'), bar: 3 },
+              { val: '20-24%', label: t('onboarding.bodyFat.average'), bar: 4 },
+              { val: '25-29%', label: t('onboarding.bodyFat.aboveAverage'), bar: 5 },
+              { val: '30-34%', label: t('onboarding.bodyFat.high'), bar: 6 },
+              { val: '35%+', label: t('onboarding.bodyFat.veryHigh'), bar: 7 },
             ].map(bf => (
               <TouchableOpacity
                 key={bf.val}
@@ -676,29 +768,29 @@ export default function OnboardingScreen({ onComplete, user }) {
 
       case 'activityLevel':
         return renderIconOptions([
-          { val: 'Sedentary', icon: '◻', desc: 'Desk job, very little movement' },
-          { val: 'Lightly Active', icon: '◧', desc: 'Some walking, light movement' },
-          { val: 'Moderately Active', icon: '◨', desc: 'On your feet regularly' },
-          { val: 'Very Active', icon: '◩', desc: 'Physical job or active lifestyle' },
-          { val: 'Extremely Active', icon: '◼', desc: 'Heavy labor or athlete' },
+          { val: 'Sedentary', icon: '◻', label: t('onboarding.activityLevel.sedentary.label'), desc: t('onboarding.activityLevel.sedentary.desc') },
+          { val: 'Lightly Active', icon: '◧', label: t('onboarding.activityLevel.lightlyActive.label'), desc: t('onboarding.activityLevel.lightlyActive.desc') },
+          { val: 'Moderately Active', icon: '◨', label: t('onboarding.activityLevel.moderatelyActive.label'), desc: t('onboarding.activityLevel.moderatelyActive.desc') },
+          { val: 'Very Active', icon: '◩', label: t('onboarding.activityLevel.veryActive.label'), desc: t('onboarding.activityLevel.veryActive.desc') },
+          { val: 'Extremely Active', icon: '◼', label: t('onboarding.activityLevel.extremelyActive.label'), desc: t('onboarding.activityLevel.extremelyActive.desc') },
         ], 'activityLevel');
 
       case 'trainingExp':
         return renderIconOptions([
-          { val: 'Beginner', icon: '1', desc: 'Less than 6 months' },
-          { val: 'Novice', icon: '2', desc: '6 months to 1 year' },
-          { val: 'Intermediate', icon: '3', desc: '1 to 3 years' },
-          { val: 'Advanced', icon: '4', desc: '3 to 5 years' },
-          { val: 'Expert', icon: '5', desc: '5+ years consistent' },
+          { val: 'Beginner', icon: '1', label: t('onboarding.trainingExp.beginner.label'), desc: t('onboarding.trainingExp.beginner.desc') },
+          { val: 'Novice', icon: '2', label: t('onboarding.trainingExp.novice.label'), desc: t('onboarding.trainingExp.novice.desc') },
+          { val: 'Intermediate', icon: '3', label: t('onboarding.trainingExp.intermediate.label'), desc: t('onboarding.trainingExp.intermediate.desc') },
+          { val: 'Advanced', icon: '4', label: t('onboarding.trainingExp.advanced.label'), desc: t('onboarding.trainingExp.advanced.desc') },
+          { val: 'Expert', icon: '5', label: t('onboarding.trainingExp.expert.label'), desc: t('onboarding.trainingExp.expert.desc') },
         ], 'trainingExp');
 
       case 'cardioExp':
         return renderIconOptions([
-          { val: 'None', icon: '○', desc: "I don't do cardio" },
-          { val: 'Beginner', icon: '◔', desc: 'Occasional walks' },
-          { val: 'Intermediate', icon: '◑', desc: 'Regular cardio 2-3x/week' },
-          { val: 'Advanced', icon: '◕', desc: 'Structured cardio program' },
-          { val: 'Athlete', icon: '●', desc: 'Competitive endurance' },
+          { val: 'None', icon: '○', label: t('onboarding.cardioExp.none.label'), desc: t('onboarding.cardioExp.none.desc') },
+          { val: 'Beginner', icon: '◔', label: t('onboarding.cardioExp.beginner.label'), desc: t('onboarding.cardioExp.beginner.desc') },
+          { val: 'Intermediate', icon: '◑', label: t('onboarding.cardioExp.intermediate.label'), desc: t('onboarding.cardioExp.intermediate.desc') },
+          { val: 'Advanced', icon: '◕', label: t('onboarding.cardioExp.advanced.label'), desc: t('onboarding.cardioExp.advanced.desc') },
+          { val: 'Athlete', icon: '●', label: t('onboarding.cardioExp.athlete.label'), desc: t('onboarding.cardioExp.athlete.desc') },
         ], 'cardioExp');
 
       case 'exerciseFreq':
@@ -712,7 +804,7 @@ export default function OnboardingScreen({ onComplete, user }) {
               >
                 <Text style={[s.freqNum, data.exerciseFreq === n && s.freqNumActive]}>{n}</Text>
                 <Text style={[s.freqLabel, data.exerciseFreq === n && { color: C.green }]}>
-                  {n === '0' ? 'rest' : n === '1' ? 'day' : 'days'}
+                  {n === '0' ? t('onboarding.freq.rest') : n === '1' ? t('onboarding.freq.day') : t('onboarding.freq.days')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -721,11 +813,11 @@ export default function OnboardingScreen({ onComplete, user }) {
 
       case 'goal':
         return renderIconOptions([
-          { val: 'Lose Fat', icon: '↓', desc: 'Burn fat and get leaner' },
-          { val: 'Build Muscle', icon: '↑', desc: 'Gain lean mass and strength' },
-          { val: 'Recomposition', icon: '⇄', desc: 'Lose fat & gain muscle' },
-          { val: 'Maintain', icon: '=', desc: 'Stay where you are' },
-          { val: 'Performance', icon: '⚡', desc: 'Optimize for athletics' },
+          { val: 'Lose Fat', icon: '↓', label: t('onboarding.goal.loseFat.label'), desc: t('onboarding.goal.loseFat.desc') },
+          { val: 'Build Muscle', icon: '↑', label: t('onboarding.goal.buildMuscle.label'), desc: t('onboarding.goal.buildMuscle.desc') },
+          { val: 'Recomposition', icon: '⇄', label: t('onboarding.goal.recomposition.label'), desc: t('onboarding.goal.recomposition.desc') },
+          { val: 'Maintain', icon: '=', label: t('onboarding.goal.maintain.label'), desc: t('onboarding.goal.maintain.desc') },
+          { val: 'Performance', icon: '⚡', label: t('onboarding.goal.performance.label'), desc: t('onboarding.goal.performance.desc') },
         ], 'goal');
 
       case 'weeklyRate':
@@ -733,58 +825,58 @@ export default function OnboardingScreen({ onComplete, user }) {
 
       case 'diet':
         return renderIconOptions([
-          { val: 'Balanced', icon: '⊕', desc: '40C / 30P / 30F — flexible and sustainable' },
-          { val: 'Low-Carb', icon: '◫', desc: 'Reduced carbs, higher fat and protein' },
-          { val: 'Keto', icon: '◬', desc: 'Very low carb, high fat' },
-          { val: 'High Protein', icon: '◮', desc: 'Protein-focused for muscle preservation' },
-          { val: 'Mediterranean', icon: '◭', desc: 'Whole foods, healthy fats, lean protein' },
+          { val: 'Balanced', icon: '⊕', label: t('onboarding.diet.balanced.label'), desc: t('onboarding.diet.balanced.desc') },
+          { val: 'Low-Carb', icon: '◫', label: t('onboarding.diet.lowCarb.label'), desc: t('onboarding.diet.lowCarb.desc') },
+          { val: 'Keto', icon: '◬', label: t('onboarding.diet.keto.label'), desc: t('onboarding.diet.keto.desc') },
+          { val: 'High Protein', icon: '◮', label: t('onboarding.diet.highProtein.label'), desc: t('onboarding.diet.highProtein.desc') },
+          { val: 'Mediterranean', icon: '◭', label: t('onboarding.diet.mediterranean.label'), desc: t('onboarding.diet.mediterranean.desc') },
         ], 'diet');
 
       case 'exerciseType':
         return (
           <View>
             {[
-              { val: 'Weight Lifting', icon: '◈' },
-              { val: 'Cardio', icon: '◎' },
-              { val: 'Calisthenics', icon: '◇' },
-              { val: 'HIIT', icon: '⚡' },
-              { val: 'Yoga / Pilates', icon: '○' },
-              { val: 'Sports', icon: '●' },
-              { val: 'Swimming', icon: '◉' },
-              { val: 'CrossFit', icon: '◈' },
-            ].map(t => (
+              { val: 'Weight Lifting', icon: '◈', label: t('onboarding.exerciseType.weightLifting') },
+              { val: 'Cardio', icon: '◎', label: t('onboarding.exerciseType.cardio') },
+              { val: 'Calisthenics', icon: '◇', label: t('onboarding.exerciseType.calisthenics') },
+              { val: 'HIIT', icon: '⚡', label: t('onboarding.exerciseType.hiit') },
+              { val: 'Yoga / Pilates', icon: '○', label: t('onboarding.exerciseType.yogaPilates') },
+              { val: 'Sports', icon: '●', label: t('onboarding.exerciseType.sports') },
+              { val: 'Swimming', icon: '◉', label: t('onboarding.exerciseType.swimming') },
+              { val: 'CrossFit', icon: '◈', label: t('onboarding.exerciseType.crossfit') },
+            ].map(et => (
               <TouchableOpacity
-                key={t.val}
-                style={[s.optionCard, data.exerciseType.includes(t.val) && s.optionCardActive]}
-                onPress={() => toggleMulti('exerciseType', t.val)}
+                key={et.val}
+                style={[s.optionCard, data.exerciseType.includes(et.val) && s.optionCardActive]}
+                onPress={() => toggleMulti('exerciseType', et.val)}
               >
-                <View style={s.optIconWrap}><Text style={[s.optIcon, data.exerciseType.includes(t.val) && { color: C.green }]}>{t.icon}</Text></View>
-                <Text style={[s.optionText, data.exerciseType.includes(t.val) && s.optionTextActive, { marginLeft: 12 }]}>{t.val}</Text>
-                {data.exerciseType.includes(t.val) && <View style={[s.checkMark, { marginLeft: 'auto' }]}><Text style={s.checkText}>✓</Text></View>}
+                <View style={s.optIconWrap}><Text style={[s.optIcon, data.exerciseType.includes(et.val) && { color: C.green }]}>{et.icon}</Text></View>
+                <Text style={[s.optionText, data.exerciseType.includes(et.val) && s.optionTextActive, { marginLeft: 12 }]}>{et.label}</Text>
+                {data.exerciseType.includes(et.val) && <View style={[s.checkMark, { marginLeft: 'auto' }]}><Text style={s.checkText}>✓</Text></View>}
               </TouchableOpacity>
             ))}
-            <Text style={s.inputHint}>Select all that apply</Text>
+            <Text style={s.inputHint}>{t('onboarding.exerciseType.selectAll')}</Text>
           </View>
         );
 
       case 'calDistribution':
         return renderIconOptions([
-          { val: 'Equal Daily', icon: '═', desc: 'Same calories every day' },
-          { val: 'Training Split', icon: '⇅', desc: 'More on training days, less on rest' },
-          { val: 'Cheat Meal', icon: '★', desc: 'One higher-calorie meal per week' },
-          { val: 'Weekend Flex', icon: '◫', desc: 'Slightly higher on weekends' },
-          { val: 'Carb Cycling', icon: '↕', desc: 'Alternate high and low carb days' },
+          { val: 'Equal Daily', icon: '═', label: t('onboarding.calDistribution.equalDaily.label'), desc: t('onboarding.calDistribution.equalDaily.desc') },
+          { val: 'Training Split', icon: '⇅', label: t('onboarding.calDistribution.trainingSplit.label'), desc: t('onboarding.calDistribution.trainingSplit.desc') },
+          { val: 'Cheat Meal', icon: '★', label: t('onboarding.calDistribution.cheatMeal.label'), desc: t('onboarding.calDistribution.cheatMeal.desc') },
+          { val: 'Weekend Flex', icon: '◫', label: t('onboarding.calDistribution.weekendFlex.label'), desc: t('onboarding.calDistribution.weekendFlex.desc') },
+          { val: 'Carb Cycling', icon: '↕', label: t('onboarding.calDistribution.carbCycling.label'), desc: t('onboarding.calDistribution.carbCycling.desc') },
         ], 'calDistribution');
 
       case 'proteinIntake':
         return (
           <View>
             {[
-              { val: '1.6', label: '1.6 g/kg', desc: 'Standard — good for general fitness' },
-              { val: '1.8', label: '1.8 g/kg', desc: 'Moderate — ideal for fat loss' },
-              { val: '2.0', label: '2.0 g/kg', desc: 'High — best for building muscle' },
-              { val: '2.2', label: '2.2 g/kg', desc: 'Maximum — experienced lifters in deficit' },
-              { val: 'auto', label: 'Let AI decide', desc: 'We\'ll calculate the optimal amount' },
+              { val: '1.6', label: t('onboarding.proteinIntake.standard.label'), desc: t('onboarding.proteinIntake.standard.desc') },
+              { val: '1.8', label: t('onboarding.proteinIntake.moderate.label'), desc: t('onboarding.proteinIntake.moderate.desc') },
+              { val: '2.0', label: t('onboarding.proteinIntake.high.label'), desc: t('onboarding.proteinIntake.high.desc') },
+              { val: '2.2', label: t('onboarding.proteinIntake.max.label'), desc: t('onboarding.proteinIntake.max.desc') },
+              { val: 'auto', label: t('onboarding.proteinIntake.auto.label'), desc: t('onboarding.proteinIntake.auto.desc') },
             ].map(p => (
               <TouchableOpacity
                 key={p.val}
@@ -808,16 +900,21 @@ export default function OnboardingScreen({ onComplete, user }) {
 
   const renderWeeklyRate = () => {
     const isMetric = data.units === 'Metric';
+    const TAG = {
+      SUSTAINABLE: t('onboarding.weeklyRate.tag.sustainable'),
+      RECOMMENDED: t('onboarding.weeklyRate.tag.recommended'),
+      AGGRESSIVE: t('onboarding.weeklyRate.tag.aggressive'),
+    };
     const rateOptions = isMetric ? [
-      { val: '0.25', label: '0.25 kg/week', desc: 'Slow & steady — easiest to maintain', tag: 'SUSTAINABLE' },
-      { val: '0.5', label: '0.5 kg/week', desc: 'Best balance of speed and sustainability', tag: 'RECOMMENDED' },
-      { val: '0.75', label: '0.75 kg/week', desc: 'Moderate — requires discipline', tag: '' },
-      { val: '1.0', label: '1.0 kg/week', desc: 'Aggressive — significant calorie deficit', tag: 'AGGRESSIVE' },
+      { val: '0.25', label: '0.25 kg/week', desc: t('onboarding.weeklyRate.slow'), tagKey: 'SUSTAINABLE' },
+      { val: '0.5', label: '0.5 kg/week', desc: t('onboarding.weeklyRate.balanced'), tagKey: 'RECOMMENDED' },
+      { val: '0.75', label: '0.75 kg/week', desc: t('onboarding.weeklyRate.moderate'), tagKey: '' },
+      { val: '1.0', label: '1.0 kg/week', desc: t('onboarding.weeklyRate.aggressive'), tagKey: 'AGGRESSIVE' },
     ] : [
-      { val: '0.5', label: '0.5 lb/week', desc: 'Slow & steady — easiest to maintain', tag: 'SUSTAINABLE' },
-      { val: '1.0', label: '1.0 lb/week', desc: 'Best balance of speed and sustainability', tag: 'RECOMMENDED' },
-      { val: '1.5', label: '1.5 lb/week', desc: 'Moderate — requires discipline', tag: '' },
-      { val: '2.0', label: '2.0 lb/week', desc: 'Aggressive — significant calorie deficit', tag: 'AGGRESSIVE' },
+      { val: '0.5', label: '0.5 lb/week', desc: t('onboarding.weeklyRate.slow'), tagKey: 'SUSTAINABLE' },
+      { val: '1.0', label: '1.0 lb/week', desc: t('onboarding.weeklyRate.balanced'), tagKey: 'RECOMMENDED' },
+      { val: '1.5', label: '1.5 lb/week', desc: t('onboarding.weeklyRate.moderate'), tagKey: '' },
+      { val: '2.0', label: '2.0 lb/week', desc: t('onboarding.weeklyRate.aggressive'), tagKey: 'AGGRESSIVE' },
     ];
     return (
       <View>
@@ -830,7 +927,7 @@ export default function OnboardingScreen({ onComplete, user }) {
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={[s.optionText, data.weeklyRate === r.val && s.optionTextActive]}>{r.label}</Text>
-                {r.tag ? <View style={[s.tag, r.tag === 'RECOMMENDED' && s.tagGreen]}><Text style={[s.tagText, r.tag === 'RECOMMENDED' && { color: C.green }]}>{r.tag}</Text></View> : null}
+                {r.tagKey ? <View style={[s.tag, r.tagKey === 'RECOMMENDED' && s.tagGreen]}><Text style={[s.tagText, r.tagKey === 'RECOMMENDED' && { color: C.green }]}>{TAG[r.tagKey]}</Text></View> : null}
               </View>
               <Text style={s.optionDesc}>{r.desc}</Text>
             </View>
@@ -853,7 +950,7 @@ export default function OnboardingScreen({ onComplete, user }) {
             <Text style={[s.optIcon, data[field] === opt.val && { color: C.green }]}>{opt.icon}</Text>
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[s.optionText, data[field] === opt.val && s.optionTextActive]}>{opt.val}</Text>
+            <Text style={[s.optionText, data[field] === opt.val && s.optionTextActive]}>{opt.label || opt.val}</Text>
             <Text style={s.optionDesc}>{opt.desc}</Text>
           </View>
           {data[field] === opt.val && <View style={s.checkMark}><Text style={s.checkText}>✓</Text></View>}
@@ -890,8 +987,8 @@ export default function OnboardingScreen({ onComplete, user }) {
         keyboardShouldPersistTaps="handled"
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX: slideAnim }] }}>
-          <Text style={s.title}>{currentStep.title}</Text>
-          <Text style={s.subtitle}>{currentStep.subtitle}</Text>
+          <Text style={s.title}>{t(`onboarding.q.${currentStep.id}.title`)}</Text>
+          <Text style={s.subtitle}>{t(`onboarding.q.${currentStep.id}.sub`)}</Text>
           <View style={s.inputArea}>{renderInput()}</View>
         </Animated.View>
       </ScrollView>
@@ -904,7 +1001,7 @@ export default function OnboardingScreen({ onComplete, user }) {
           activeOpacity={0.85}
         >
           <Text style={[s.continueBtnText, !canProceed() && s.continueBtnTextDisabled]}>
-            {step === totalSteps - 1 ? 'BUILD MY PROGRAM' : 'CONTINUE'}
+            {step === totalSteps - 1 ? t('onboarding.cta.build') : t('onboarding.cta.continue')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -948,6 +1045,7 @@ const makeBs = (C) => StyleSheet.create({
   phaseCheck: { color: C.green, fontSize: 14, fontWeight: '800' },
   phaseText: { color: C.muted, fontSize: 14, fontWeight: '500' },
   phaseTextActive: { color: C.light, fontWeight: '600' },
+  phaseDetail: { color: C.green, fontSize: 12, fontWeight: '700', marginTop: 3, letterSpacing: 0.3 },
 });
 
 const makeStyles = (C) => StyleSheet.create({

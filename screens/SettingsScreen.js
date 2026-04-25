@@ -1,30 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import {
-  StyleSheet, Text, View, TouchableOpacity, Switch,
+  StyleSheet, Text, View, TouchableOpacity,
   SafeAreaView, ScrollView, Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import {
   setNotificationsEnabled, requestPermission,
   scheduleSmartReminders, getCategoryPrefs, setCategoryPref,
 } from '../utils/notifications';
 import { Storage, KEYS } from '../utils/storage';
 import { Auth } from '../utils/auth';
+import AppleSwitch from '../components/AppleSwitch';
 const SETTINGS_KEY = 'greengain_settings';
-
-const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'ar', label: 'العربية' },
-];
-
-const UNIT_SYSTEMS = [
-  { code: 'metric',   label: 'Metric (kg, cm)' },
-  { code: 'imperial', label: 'Imperial (lb, ft)' },
-];
 
 const DEFAULTS = {
   language: 'en',
@@ -35,7 +24,12 @@ const DEFAULTS = {
 
 export default function SettingsScreen({ onNavigate }) {
   const { C, mode, setMode } = useTheme();
-  const s = makeStyles(C);
+  const { t, lang, units, isRTL, setLanguage, setUnitSystem, languages } = useI18n();
+  const s = makeStyles(C, isRTL);
+  const UNIT_SYSTEMS = [
+    { code: 'metric',   label: t('settings.unitsMetric') },
+    { code: 'imperial', label: t('settings.unitsImperial') },
+  ];
   const [settings, setSettings] = useState(DEFAULTS);
   const [loaded, setLoaded] = useState(false);
   const [showLang, setShowLang] = useState(false);
@@ -52,6 +46,9 @@ export default function SettingsScreen({ onNavigate }) {
       setLoaded(true);
     })();
   }, []);
+
+  // Keep local mirror in sync with the global context
+  useEffect(() => { setSettings(s => ({ ...s, language: lang, units })); }, [lang, units]);
 
   const reschedule = async () => {
     try {
@@ -74,10 +71,12 @@ export default function SettingsScreen({ onNavigate }) {
     const next = { ...settings, [key]: value };
     setSettings(next);
     try { await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch {}
+    if (key === 'language') await setLanguage(value);
+    if (key === 'units') await setUnitSystem(value);
   };
 
-  const langLabel  = LANGUAGES.find(l => l.code === settings.language)?.label || 'English';
-  const unitLabel  = UNIT_SYSTEMS.find(u => u.code === settings.units)?.label || 'Metric';
+  const langLabel  = languages.find(l => l.code === settings.language)?.label || 'English';
+  const unitLabel  = UNIT_SYSTEMS.find(u => u.code === settings.units)?.label || UNIT_SYSTEMS[0].label;
 
   const onToggleDark = (val) => {
     setMode(val ? 'dark' : 'light');
@@ -87,42 +86,40 @@ export default function SettingsScreen({ onNavigate }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <TouchableOpacity onPress={() => onNavigate('profile')} style={s.backBtn}>
-          <Text style={s.backText}>‹</Text>
+          <Text style={s.backText}>{isRTL ? '›' : '‹'}</Text>
         </TouchableOpacity>
-        <Text style={s.titleBarText}>Settings</Text>
+        <Text style={s.titleBarText}>{t('settings.title')}</Text>
         <View style={{ width: 32 }} />
       </View>
 
       {!loaded ? null : (
         <ScrollView contentContainerStyle={s.scroll}>
-          <Text style={s.sectionLabel}>APPEARANCE</Text>
+          <Text style={s.sectionLabel}>{t('settings.appearance')}</Text>
           <View style={s.card}>
             <View style={s.row}>
               <View style={{ flex: 1 }}>
-                <Text style={s.rowTitle}>Dark mode</Text>
-                <Text style={s.rowSub}>Use dark theme across the app</Text>
+                <Text style={s.rowTitle}>{t('settings.darkMode')}</Text>
+                <Text style={s.rowSub}>{t('settings.darkModeSub')}</Text>
               </View>
-              <Switch
+              <AppleSwitch
                 value={mode === 'dark'}
                 onValueChange={onToggleDark}
-                trackColor={{ false: C.surface, true: C.green }}
-                thumbColor={C.white}
               />
             </View>
           </View>
 
-          <Text style={s.sectionLabel}>PREFERENCES</Text>
+          <Text style={s.sectionLabel}>{t('settings.preferences')}</Text>
           <View style={s.card}>
             <TouchableOpacity style={s.row} onPress={() => { setShowLang(!showLang); setShowUnits(false); }}>
               <View style={{ flex: 1 }}>
-                <Text style={s.rowTitle}>Language</Text>
+                <Text style={s.rowTitle}>{t('settings.language')}</Text>
                 <Text style={s.rowSub}>{langLabel}</Text>
               </View>
-              <Text style={s.chevron}>{showLang ? '⌃' : '›'}</Text>
+              <Text style={s.chevron}>{showLang ? '⌃' : (isRTL ? '‹' : '›')}</Text>
             </TouchableOpacity>
             {showLang && (
               <View style={s.optionList}>
-                {LANGUAGES.map(l => (
+                {languages.map(l => (
                   <TouchableOpacity
                     key={l.code}
                     style={[s.optionRow, settings.language === l.code && s.optionRowActive]}
@@ -141,10 +138,10 @@ export default function SettingsScreen({ onNavigate }) {
 
             <TouchableOpacity style={s.row} onPress={() => { setShowUnits(!showUnits); setShowLang(false); }}>
               <View style={{ flex: 1 }}>
-                <Text style={s.rowTitle}>Units</Text>
+                <Text style={s.rowTitle}>{t('settings.units')}</Text>
                 <Text style={s.rowSub}>{unitLabel}</Text>
               </View>
-              <Text style={s.chevron}>{showUnits ? '⌃' : '›'}</Text>
+              <Text style={s.chevron}>{showUnits ? '⌃' : (isRTL ? '‹' : '›')}</Text>
             </TouchableOpacity>
             {showUnits && (
               <View style={s.optionList}>
@@ -164,27 +161,25 @@ export default function SettingsScreen({ onNavigate }) {
             )}
           </View>
 
-          <Text style={s.sectionLabel}>NOTIFICATIONS</Text>
+          <Text style={s.sectionLabel}>{t('settings.notifications')}</Text>
           <View style={s.card}>
             <View style={s.row}>
               <View style={{ flex: 1 }}>
-                <Text style={s.rowTitle}>Push notifications</Text>
-                <Text style={s.rowSub}>Daily progress and tips</Text>
+                <Text style={s.rowTitle}>{t('settings.push')}</Text>
+                <Text style={s.rowSub}>{t('settings.pushSub')}</Text>
               </View>
-              <Switch
+              <AppleSwitch
                 value={settings.notifications}
                 onValueChange={(v) => update('notifications', v)}
-                trackColor={{ false: C.surface, true: C.green }}
-                thumbColor={C.white}
               />
             </View>
             <View style={s.divider} />
             <View style={s.row}>
               <View style={{ flex: 1 }}>
-                <Text style={s.rowTitle}>Meal reminders</Text>
-                <Text style={s.rowSub}>Reminders to log meals</Text>
+                <Text style={s.rowTitle}>{t('settings.mealReminders')}</Text>
+                <Text style={s.rowSub}>{t('settings.mealRemindersSub')}</Text>
               </View>
-              <Switch
+              <AppleSwitch
                 value={settings.reminders}
                 onValueChange={async (v) => {
                   if (v) {
@@ -217,14 +212,14 @@ export default function SettingsScreen({ onNavigate }) {
 
           {catPrefs && settings.notifications && settings.reminders && (
             <>
-              <Text style={s.sectionLabel}>WHAT TO REMIND ME ABOUT</Text>
+              <Text style={s.sectionLabel}>{t('settings.remindAboutTitle')}</Text>
               <View style={s.card}>
                 {[
-                  { k: 'meals',       title: 'Meal times',       sub: 'A nudge 15 min before each scheduled meal' },
-                  { k: 'water',       title: 'Hydration',        sub: 'Hourly water reminders 9am–9pm' },
-                  { k: 'dinnerCheck', title: 'Daily log check',  sub: '8pm: did you log dinner?' },
-                  { k: 'workout',     title: 'Workouts',         sub: '30 min before each scheduled workout' },
-                  { k: 'weekly',      title: 'Weekly review',    sub: 'Sunday morning recap of your week' },
+                  { k: 'meals',       title: t('settings.remind.meals'),       sub: t('settings.remind.mealsSub') },
+                  { k: 'water',       title: t('settings.remind.water'),       sub: t('settings.remind.waterSub') },
+                  { k: 'dinnerCheck', title: t('settings.remind.dinnerCheck'), sub: t('settings.remind.dinnerCheckSub') },
+                  { k: 'workout',     title: t('settings.remind.workout'),     sub: t('settings.remind.workoutSub') },
+                  { k: 'weekly',      title: t('settings.remind.weekly'),      sub: t('settings.remind.weeklySub') },
                 ].map((c, i, arr) => (
                   <React.Fragment key={c.k}>
                     <View style={s.row}>
@@ -232,11 +227,9 @@ export default function SettingsScreen({ onNavigate }) {
                         <Text style={s.rowTitle}>{c.title}</Text>
                         <Text style={s.rowSub}>{c.sub}</Text>
                       </View>
-                      <Switch
+                      <AppleSwitch
                         value={!!catPrefs[c.k]}
                         onValueChange={(v) => updateCat(c.k, v)}
-                        trackColor={{ false: C.surface, true: C.green }}
-                        thumbColor={C.white}
                       />
                     </View>
                     {i < arr.length - 1 && <View style={s.divider} />}
@@ -246,10 +239,10 @@ export default function SettingsScreen({ onNavigate }) {
             </>
           )}
 
-          <Text style={s.sectionLabel}>ABOUT</Text>
+          <Text style={s.sectionLabel}>{t('settings.about')}</Text>
           <View style={s.card}>
             <View style={s.row}>
-              <Text style={s.rowTitle}>Version</Text>
+              <Text style={s.rowTitle}>{t('settings.version')}</Text>
               <Text style={s.rowSub}>1.0.0</Text>
             </View>
           </View>
@@ -259,18 +252,18 @@ export default function SettingsScreen({ onNavigate }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL = false) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   titleBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: C.border },
   titleBarText: { color: C.white, fontSize: 18, fontWeight: '900' },
   backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   backText: { color: C.green, fontSize: 28, fontWeight: '900', marginTop: -4 },
   scroll: { padding: 16, paddingBottom: 100 },
-  sectionLabel: { color: C.muted, fontSize: 11, fontWeight: '800', letterSpacing: 2, marginBottom: 8, marginTop: 12, marginLeft: 4 },
+  sectionLabel: { color: C.muted, fontSize: 11, fontWeight: '800', letterSpacing: 2, marginBottom: 8, marginTop: 12, marginLeft: 4, textAlign: isRTL ? 'right' : 'left' },
   card: { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, marginBottom: 4 },
   row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-  rowTitle: { color: C.white, fontSize: 14, fontWeight: '700' },
-  rowSub: { color: C.muted, fontSize: 12, marginTop: 2 },
+  rowTitle: { color: C.white, fontSize: 14, fontWeight: '700', textAlign: isRTL ? 'right' : 'left' },
+  rowSub: { color: C.muted, fontSize: 12, marginTop: 2, textAlign: isRTL ? 'right' : 'left' },
   chevron: { color: C.muted, fontSize: 20, fontWeight: '700' },
   divider: { height: 1, backgroundColor: C.border, marginHorizontal: 16 },
   optionList: { paddingHorizontal: 16, paddingBottom: 12 },

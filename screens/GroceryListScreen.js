@@ -4,6 +4,7 @@ import {
   SafeAreaView, ScrollView, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 import { callAI, parseJSON } from '../utils/api';
 
@@ -13,6 +14,7 @@ const CATEGORY_ORDER = ['Produce', 'Protein', 'Dairy', 'Pantry', 'Grains', 'Froz
 
 export default function GroceryListScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { isRTL } = useI18n();
   const s = makeStyles(C);
   const [plan, setPlan] = useState(null);
   const [list, setList] = useState(null); // { Produce: [{name, qty, checked}], ... }
@@ -109,7 +111,7 @@ export default function GroceryListScreen({ user, onNavigate }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <TouchableOpacity onPress={() => onNavigate('foodlog')} style={s.backBtn}>
-          <Text style={s.backText}>‹ Back</Text>
+          <Text style={s.backText}>{isRTL ? '› Back' : '‹ Back'}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.titleBarText}>Grocery list</Text>

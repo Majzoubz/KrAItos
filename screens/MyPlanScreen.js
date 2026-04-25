@@ -6,6 +6,7 @@ import {
 import Svg, { Circle as SvgCircle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 import { generatePlanFromOnboarding } from '../utils/planGenerator';
 import { buildWeeklyContext, logSession } from '../utils/planAdapter';
@@ -55,14 +56,14 @@ function AdherenceRing({ done, total, C }) {
   );
 }
 
-const REST_TIPS = [
-  { icon: '🧘', title: 'Mobility flow', text: '10 min · hip openers, thoracic rotations, ankle drills' },
-  { icon: '🚶', title: 'Easy walk',     text: '20–30 min · keeps blood flowing without taxing recovery' },
-  { icon: '😴', title: 'Sleep target',  text: '7.5–9 hrs · biggest single recovery lever' },
-];
-
 export default function MyPlanScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { t } = useI18n();
+  const REST_TIPS = [
+    { icon: '🧘', title: t('plan.rest.mobilityTitle'), text: t('plan.rest.mobilityText') },
+    { icon: '🚶', title: t('plan.rest.walkTitle'),     text: t('plan.rest.walkText') },
+    { icon: '😴', title: t('plan.rest.sleepTitle'),    text: t('plan.rest.sleepText') },
+  ];
   const s = makeStyles(C);
   const [plan, setPlan]         = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -94,16 +95,16 @@ export default function MyPlanScreen({ user, onNavigate }) {
     try {
       const raw = await AsyncStorage.getItem(ONBOARDING_DATA_KEY);
       if (!raw) {
-        Alert.alert('Onboarding required', 'Please complete onboarding first.');
+        Alert.alert(t('plan.alert.onboardingRequiredTitle'), t('plan.alert.onboardingRequiredMsg'));
         return;
       }
       setRegenerating(true);
       const data = JSON.parse(raw);
       const fresh = await generatePlanFromOnboarding(data, user.email || user.uid);
       if (fresh) setPlan(fresh);
-      else Alert.alert('Could not generate plan', 'Please try again in a moment.');
+      else Alert.alert(t('plan.alert.cannotGenerateTitle'), t('plan.alert.cannotGenerateMsg'));
     } catch (e) {
-      Alert.alert('Error', e.message || 'Plan generation failed.');
+      Alert.alert(t('plan.alert.errorTitle'), e.message || t('plan.alert.generateFailMsg'));
     } finally {
       setRegenerating(false);
     }
@@ -194,7 +195,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
   if (loading) {
     return (
       <SafeAreaView style={s.safe}>
-        <View style={s.titleBar}><Text style={s.titleBarText}>Training</Text></View>
+        <View style={s.titleBar}><Text style={s.titleBarText}>{t('nav.training')}</Text></View>
         <View style={s.center}><ActivityIndicator color={C.green} size="large" /></View>
       </SafeAreaView>
     );
@@ -203,13 +204,13 @@ export default function MyPlanScreen({ user, onNavigate }) {
   if (!plan) {
     return (
       <SafeAreaView style={s.safe}>
-        <View style={s.titleBar}><Text style={s.titleBarText}>Training</Text></View>
+        <View style={s.titleBar}><Text style={s.titleBarText}>{t('nav.training')}</Text></View>
         <View style={s.center}>
           <View style={s.emptyIcon}><Text style={s.emptyIconText}>🏋️</Text></View>
-          <Text style={s.emptyTitle}>No workout plan yet</Text>
-          <Text style={s.emptyText}>Head back to Home — your training split will generate from your sign-up answers.</Text>
+          <Text style={s.emptyTitle}>{t('plan.empty.title')}</Text>
+          <Text style={s.emptyText}>{t('plan.empty.text')}</Text>
           <TouchableOpacity style={s.goBtn} onPress={() => onNavigate('home')}>
-            <Text style={s.goBtnText}>Go to Home</Text>
+            <Text style={s.goBtnText}>{t('plan.empty.cta')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -224,9 +225,9 @@ export default function MyPlanScreen({ user, onNavigate }) {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
-        <Text style={s.titleBarText}>Training</Text>
+        <Text style={s.titleBarText}>{t('nav.training')}</Text>
         {lastTouchDate && (
-          <Text style={s.titleBarSub}>{plan.adaptedAt ? 'Last adapted' : 'Generated'} {lastTouchDate}</Text>
+          <Text style={s.titleBarSub}>{plan.adaptedAt ? t('plan.lastAdapted') : t('plan.generatedLabel')} {lastTouchDate}</Text>
         )}
       </View>
 
@@ -235,22 +236,22 @@ export default function MyPlanScreen({ user, onNavigate }) {
         {todayWorkout && (
           isRestType(todayWorkout.type) ? (
             <View style={s.heroRest}>
-              <Text style={s.heroTodayLabelMuted}>TODAY · {DAY_SHORT[TODAY_NAME] || TODAY_NAME}</Text>
-              <Text style={s.heroTitleRest}>Rest day 🌿</Text>
-              <Text style={s.heroSubRest}>Active recovery makes the gains stick. Try one of these:</Text>
-              {REST_TIPS.map((t, i) => (
+              <Text style={s.heroTodayLabelMuted}>{t('plan.today')} · {DAY_SHORT[TODAY_NAME] || TODAY_NAME}</Text>
+              <Text style={s.heroTitleRest}>{t('plan.restDayTitle')}</Text>
+              <Text style={s.heroSubRest}>{t('plan.restDaySub')}</Text>
+              {REST_TIPS.map((tip, i) => (
                 <View key={i} style={s.restTip}>
-                  <Text style={s.restTipIcon}>{t.icon}</Text>
+                  <Text style={s.restTipIcon}>{tip.icon}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.restTipTitle}>{t.title}</Text>
-                    <Text style={s.restTipText}>{t.text}</Text>
+                    <Text style={s.restTipTitle}>{tip.title}</Text>
+                    <Text style={s.restTipText}>{tip.text}</Text>
                   </View>
                 </View>
               ))}
             </View>
           ) : (
             <View style={s.hero}>
-              <Text style={s.heroTodayLabel}>TODAY · {DAY_SHORT[TODAY_NAME] || TODAY_NAME}</Text>
+              <Text style={s.heroTodayLabel}>{t('plan.today')} · {DAY_SHORT[TODAY_NAME] || TODAY_NAME}</Text>
               <Text style={s.heroTitle}>{todayWorkout.type}</Text>
               {(todayWorkout.focus || todayWorkout.duration) && (
                 <Text style={s.heroSub}>
@@ -260,14 +261,14 @@ export default function MyPlanScreen({ user, onNavigate }) {
                 </Text>
               )}
               {(todayWorkout.exercises || []).length > 0 && (
-                <Text style={s.heroExCount}>{todayWorkout.exercises.length} exercises</Text>
+                <Text style={s.heroExCount}>{t('plan.exerciseCount', { count: todayWorkout.exercises.length })}</Text>
               )}
               <TouchableOpacity
                 style={s.heroStartBtn}
                 onPress={() => onNavigate('workoutsession', { day: todayWorkout.day })}
                 activeOpacity={0.85}
               >
-                <Text style={s.heroStartText}>▶  START WORKOUT</Text>
+                <Text style={s.heroStartText}>{t('plan.startWorkout')}</Text>
               </TouchableOpacity>
               <View style={{ flexDirection: 'row', marginTop: 8 }}>
                 <TouchableOpacity
@@ -275,7 +276,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
                   onPress={() => markSession(todayWorkout.day, todayWorkout.type, true)}
                 >
                   <Text style={[s.heroMiniText, todayStatus === 'done' && s.heroMiniTextDone]}>
-                    {todayStatus === 'done' ? '✓ Completed' : 'Mark done'}
+                    {todayStatus === 'done' ? t('plan.completed') : t('plan.markDone')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -283,7 +284,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
                   onPress={() => markSession(todayWorkout.day, todayWorkout.type, false)}
                 >
                   <Text style={[s.heroMiniText, todayStatus === 'skipped' && { color: C.white }]}>
-                    {todayStatus === 'skipped' ? '✗ Skipped' : 'Skip'}
+                    {todayStatus === 'skipped' ? t('plan.skipped') : t('plan.skip')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -296,12 +297,14 @@ export default function MyPlanScreen({ user, onNavigate }) {
           <View style={s.adhCard}>
             <AdherenceRing done={weekStats.done} total={weekStats.total} C={C} />
             <View style={{ flex: 1, marginLeft: 14 }}>
-              <Text style={s.adhTitle}>This week</Text>
+              <Text style={s.adhTitle}>{t('plan.thisWeek')}</Text>
               <Text style={s.adhSub}>
                 {weekStats.done >= weekStats.total
-                  ? '🎯 Weekly target hit'
-                  : `${weekStats.total - weekStats.done} workout${weekStats.total - weekStats.done === 1 ? '' : 's'} to go`}
-                {weekStats.skipped > 0 ? ` · ${weekStats.skipped} skipped` : ''}
+                  ? t('plan.weeklyHit')
+                  : ((weekStats.total - weekStats.done) === 1
+                      ? t('plan.workoutsToGoOne')
+                      : t('plan.workoutsToGo', { count: weekStats.total - weekStats.done }))}
+                {weekStats.skipped > 0 ? ` · ${t('plan.skippedSuffix', { count: weekStats.skipped })}` : ''}
               </Text>
             </View>
           </View>
@@ -335,7 +338,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
           })}
         </ScrollView>
 
-        <Text style={s.sectionTitle}>This week's split</Text>
+        <Text style={s.sectionTitle}>{t('plan.weekSplit')}</Text>
 
         {(plan.workoutPlan || []).map((w, dayIdx) => {
           const isRest = isRestType(w.type);
@@ -350,9 +353,9 @@ export default function MyPlanScreen({ user, onNavigate }) {
               <View style={s.workoutHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                   <Text style={s.workoutDay}>{w.day}</Text>
-                  {isToday && <View style={s.todayBadge}><Text style={s.todayBadgeText}>TODAY</Text></View>}
-                  {status === 'done' && !isToday && <Text style={s.cardStatusDone}>✓ done</Text>}
-                  {status === 'skipped' && !isToday && <Text style={s.cardStatusSkip}>✗ skipped</Text>}
+                  {isToday && <View style={s.todayBadge}><Text style={s.todayBadgeText}>{t('plan.today')}</Text></View>}
+                  {status === 'done' && !isToday && <Text style={s.cardStatusDone}>{t('plan.cardDone')}</Text>}
+                  {status === 'skipped' && !isToday && <Text style={s.cardStatusSkip}>{t('plan.cardSkipped')}</Text>}
                 </View>
                 <View style={[s.typeBadge, isRest && s.restBadge]}>
                   <Text style={[s.typeText, isRest && s.restText]}>{w.type}</Text>
@@ -369,22 +372,22 @@ export default function MyPlanScreen({ user, onNavigate }) {
                   style={s.startBtnSm}
                   onPress={() => onNavigate('workoutsession', { day: w.day })}
                 >
-                  <Text style={s.startBtnSmText}>▶ Start this workout</Text>
+                  <Text style={s.startBtnSmText}>{t('plan.startThis')}</Text>
                 </TouchableOpacity>
               )}
 
               {isRest && (
                 <View style={s.subBlock}>
-                  <Text style={s.subBlockTitle}>RECOVERY IDEAS</Text>
-                  {REST_TIPS.map((t, i) => (
-                    <Text key={i} style={s.subBlockText}>• {t.icon} {t.title} — {t.text}</Text>
+                  <Text style={s.subBlockTitle}>{t('plan.recoveryIdeas')}</Text>
+                  {REST_TIPS.map((tip, i) => (
+                    <Text key={i} style={s.subBlockText}>• {tip.icon} {tip.title} — {tip.text}</Text>
                   ))}
                 </View>
               )}
 
               {Array.isArray(w.warmup) && w.warmup.length > 0 && (
                 <View style={s.subBlock}>
-                  <Text style={s.subBlockTitle}>WARM-UP</Text>
+                  <Text style={s.subBlockTitle}>{t('plan.warmup')}</Text>
                   {w.warmup.map((it, k) => (
                     <Text key={k} style={s.subBlockText}>• {it}</Text>
                   ))}
@@ -393,7 +396,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
 
               {Array.isArray(w.exercises) && w.exercises.length > 0 && (
                 <View style={s.subBlock}>
-                  <Text style={s.subBlockTitle}>WORKOUT</Text>
+                  <Text style={s.subBlockTitle}>{t('plan.workoutLabel')}</Text>
                   {w.exercises.map((e, j) => {
                     const exObj = typeof e === 'string' ? { name: e } : e;
                     return (
@@ -404,7 +407,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
                               {exObj.name} <Text style={s.exInfoIcon}>ⓘ</Text>
                             </Text>
                             {exObj.swappedFrom && (
-                              <Text style={s.exSwapped}>↻ swapped from {exObj.swappedFrom}</Text>
+                              <Text style={s.exSwapped}>{t('plan.swappedFrom', { name: exObj.swappedFrom })}</Text>
                             )}
                           </TouchableOpacity>
                           <View style={{ alignItems: 'flex-end' }}>
@@ -419,12 +422,12 @@ export default function MyPlanScreen({ user, onNavigate }) {
                               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                               activeOpacity={0.7}
                             >
-                              <Text style={s.swapBtnText}>↻ Swap</Text>
+                              <Text style={s.swapBtnText}>{t('plan.swap')}</Text>
                             </TouchableOpacity>
                           </View>
                         </View>
                         <View style={s.exMetaRow}>
-                          {exObj.rest ? <Text style={s.exMeta}>Rest {exObj.rest}</Text> : null}
+                          {exObj.rest ? <Text style={s.exMeta}>{t('plan.restWord')} {exObj.rest}</Text> : null}
                           {exObj.rpe  ? <Text style={s.exMeta}>{exObj.rpe}</Text> : null}
                         </View>
                         {exObj.notes ? <Text style={s.exNotes}>↳ {exObj.notes}</Text> : null}
@@ -436,7 +439,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
 
               {Array.isArray(w.cooldown) && w.cooldown.length > 0 && (
                 <View style={s.subBlock}>
-                  <Text style={s.subBlockTitle}>COOL-DOWN</Text>
+                  <Text style={s.subBlockTitle}>{t('plan.cooldown')}</Text>
                   {w.cooldown.map((it, k) => (
                     <Text key={k} style={s.subBlockText}>• {it}</Text>
                   ))}
@@ -448,7 +451,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
 
         {Array.isArray(plan.progressionNotes) && plan.progressionNotes.length > 0 && (
           <>
-            <Text style={s.sectionTitle}>How to progress</Text>
+            <Text style={s.sectionTitle}>{t('plan.howToProgress')}</Text>
             {plan.progressionNotes.map((p, i) => (
               <View key={i} style={s.progRow}>
                 <View style={s.progNum}><Text style={s.progNumText}>{i + 1}</Text></View>
@@ -464,31 +467,31 @@ export default function MyPlanScreen({ user, onNavigate }) {
           onPress={() => setAboutOpen(o => !o)}
           activeOpacity={0.8}
         >
-          <Text style={s.aboutToggleText}>About this program</Text>
+          <Text style={s.aboutToggleText}>{t('plan.about')}</Text>
           <Text style={s.aboutToggleArrow}>{aboutOpen ? '▲' : '▼'}</Text>
         </TouchableOpacity>
         {aboutOpen && (
           <View style={s.aboutBlock}>
             {plan.userProfile && (
               <View style={s.profileBadge}>
-                <Text style={s.profileBadgeLabel}>YOUR PROFILE</Text>
+                <Text style={s.profileBadgeLabel}>{t('plan.profileLabel')}</Text>
                 <Text style={s.profileBadgeText}>
                   {plan.userProfile?.goal} · {plan.userProfile?.weight}kg · {plan.userProfile?.height}cm · {plan.userProfile?.activity}
                 </Text>
                 {Array.isArray(plan.userProfile?.exerciseType) && plan.userProfile.exerciseType.length > 0 && (
-                  <Text style={s.profileBadgeText}>Modality: {plan.userProfile.exerciseType.join(' · ')}</Text>
+                  <Text style={s.profileBadgeText}>{t('plan.modality', { list: plan.userProfile.exerciseType.join(' · ') })}</Text>
                 )}
               </View>
             )}
             {plan.trainingPhilosophy && (
               <View style={s.philosophyCard}>
-                <Text style={s.philosophyLabel}>TRAINING PHILOSOPHY</Text>
+                <Text style={s.philosophyLabel}>{t('plan.philosophyLabel')}</Text>
                 <Text style={s.philosophyText}>{plan.trainingPhilosophy}</Text>
               </View>
             )}
             {plan.weeklyVolume && (
               <View style={s.volumeCard}>
-                <Text style={s.volumeLabel}>WEEKLY VOLUME</Text>
+                <Text style={s.volumeLabel}>{t('plan.volumeLabel')}</Text>
                 <Text style={s.volumeText}>{plan.weeklyVolume}</Text>
               </View>
             )}
@@ -503,7 +506,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
         >
           {regenerating
             ? <ActivityIndicator color={C.green} />
-            : <Text style={s.updateBtnText}>↻ Regenerate Program</Text>}
+            : <Text style={s.updateBtnText}>{t('plan.regenerate')}</Text>}
         </TouchableOpacity>
       </ScrollView>
 
@@ -511,12 +514,12 @@ export default function MyPlanScreen({ user, onNavigate }) {
       <Modal visible={!!explainEx} transparent animationType="fade" onRequestClose={() => setExplainEx(null)}>
         <TouchableOpacity activeOpacity={1} style={s.modalBg} onPress={() => setExplainEx(null)}>
           <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
-            <Text style={s.modalLabel}>HOW TO DO IT</Text>
+            <Text style={s.modalLabel}>{t('plan.modal.howTo')}</Text>
             <Text style={s.modalTitle}>{explainEx?.name}</Text>
             {explainEx?.loading ? (
               <View style={{ paddingVertical: 30, alignItems: 'center' }}>
                 <ActivityIndicator color={C.green} />
-                <Text style={{ color: C.muted, marginTop: 10, fontSize: 12 }}>Coach is writing…</Text>
+                <Text style={{ color: C.muted, marginTop: 10, fontSize: 12 }}>{t('plan.modal.coachWriting')}</Text>
               </View>
             ) : (
               <ScrollView style={{ maxHeight: 380, marginTop: 6 }}>
@@ -524,7 +527,7 @@ export default function MyPlanScreen({ user, onNavigate }) {
               </ScrollView>
             )}
             <TouchableOpacity style={s.modalCloseBtn} onPress={() => setExplainEx(null)}>
-              <Text style={s.modalCloseBtnText}>Close</Text>
+              <Text style={s.modalCloseBtnText}>{t('plan.modal.close')}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -534,30 +537,30 @@ export default function MyPlanScreen({ user, onNavigate }) {
       <Modal visible={!!swapEx} transparent animationType="fade" onRequestClose={() => setSwapEx(null)}>
         <TouchableOpacity activeOpacity={1} style={s.modalBg} onPress={() => setSwapEx(null)}>
           <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
-            <Text style={s.modalLabel}>SWAP EXERCISE</Text>
+            <Text style={s.modalLabel}>{t('plan.swapModal.title')}</Text>
             <Text style={s.modalTitle}>{swapEx?.orig?.name}</Text>
-            <Text style={s.modalBodySm}>Pick an alternative — same muscles, same set/rep target.</Text>
+            <Text style={s.modalBodySm}>{t('plan.swapModal.sub')}</Text>
             {swapEx?.loading ? (
               <View style={{ paddingVertical: 30, alignItems: 'center' }}>
                 <ActivityIndicator color={C.green} />
-                <Text style={{ color: C.muted, marginTop: 10, fontSize: 12 }}>Finding swaps…</Text>
+                <Text style={{ color: C.muted, marginTop: 10, fontSize: 12 }}>{t('plan.swapModal.finding')}</Text>
               </View>
             ) : (
               <ScrollView style={{ maxHeight: 380, marginTop: 8 }}>
                 {(swapEx?.alts || []).length === 0 && (
-                  <Text style={[s.modalBody, { color: C.muted }]}>No swaps suggested. Try again.</Text>
+                  <Text style={[s.modalBody, { color: C.muted }]}>{t('plan.swapModal.none')}</Text>
                 )}
                 {(swapEx?.alts || []).map((alt, i) => (
                   <TouchableOpacity key={i} style={s.swapAlt} onPress={() => applySwap(alt)} activeOpacity={0.85}>
                     <Text style={s.swapAltName}>{alt.name}</Text>
                     {alt.reason && <Text style={s.swapAltReason}>{alt.reason}</Text>}
-                    <Text style={s.swapAltCta}>Use this →</Text>
+                    <Text style={s.swapAltCta}>{t('plan.swapModal.useThis')}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             )}
             <TouchableOpacity style={s.modalCloseBtn} onPress={() => setSwapEx(null)}>
-              <Text style={s.modalCloseBtnText}>Cancel</Text>
+              <Text style={s.modalCloseBtnText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>

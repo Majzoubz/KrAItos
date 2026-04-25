@@ -196,6 +196,7 @@ export const KEYS = {
   ACTIVE_WORKOUT:  (uid)  => 'activeworkout_'  + cleanUid(uid),
   BARCODE_CACHE:   ()     => 'barcodecache_v1',
   MEASUREMENTS:    (uid)  => 'measurements_'   + cleanUid(uid),
+  MEASUREMENTS_MIGRATION: (uid) => 'measurementsmig_' + cleanUid(uid),
   PROGRESS_PHOTOS: (uid)  => 'progressphotos_' + cleanUid(uid),
   WEEKLY_REVIEW:   (uid)  => 'weeklyreview_'   + cleanUid(uid),
   QUICK_FAVORITES: (uid)  => 'quickfavorites_' + cleanUid(uid),

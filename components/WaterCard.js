@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 
 const TODAY = new Date().toDateString();
@@ -9,7 +10,8 @@ const DEFAULT_GOAL = 8;
 
 export default function WaterCard({ uid, goalGlasses = DEFAULT_GOAL }) {
   const { C } = useTheme();
-  const s = makeStyles(C);
+  const { t, isRTL } = useI18n();
+  const s = makeStyles(C, isRTL);
   const [glasses, setGlasses] = useState(0);
 
   const key = KEYS.WATER(uid, TODAY);
@@ -39,9 +41,9 @@ export default function WaterCard({ uid, goalGlasses = DEFAULT_GOAL }) {
     <View style={s.card}>
       <View style={s.left}>
         <View style={s.iconWrap}><Text style={s.icon}>💧</Text></View>
-        <View>
-          <Text style={s.title}>{glasses} <Text style={s.titleSm}>/ {goalGlasses} glasses</Text></Text>
-          <Text style={s.sub}>{oz} oz today</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.title}>{glasses} <Text style={s.titleSm}>/ {goalGlasses} {t('water.glasses')}</Text></Text>
+          <Text style={s.sub}>{t('water.ozToday', { oz })}</Text>
         </View>
       </View>
       <View style={s.right}>
@@ -59,7 +61,7 @@ export default function WaterCard({ uid, goalGlasses = DEFAULT_GOAL }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL = false) => StyleSheet.create({
   card: {
     backgroundColor: C.card, borderRadius: 18, padding: 14, marginBottom: 12,
     borderWidth: 1, borderColor: C.border,
@@ -71,14 +73,20 @@ const makeStyles = (C) => StyleSheet.create({
     marginRight: 12,
   },
   icon: { fontSize: 22 },
-  title: { color: C.white, fontSize: 18, fontWeight: '900' },
+  title: { color: C.white, fontSize: 18, fontWeight: '900', textAlign: isRTL ? 'right' : 'left' },
   titleSm: { color: C.muted, fontSize: 12, fontWeight: '600' },
-  sub: { color: C.muted, fontSize: 11, marginTop: 2 },
-  right: { flexDirection: 'row', position: 'absolute', right: 12, top: 14 },
+  sub: { color: C.muted, fontSize: 11, marginTop: 2, textAlign: isRTL ? 'right' : 'left' },
+  right: {
+    flexDirection: isRTL ? 'row-reverse' : 'row',
+    position: 'absolute', top: 14,
+    right: isRTL ? undefined : 12,
+    left: isRTL ? 12 : undefined,
+  },
   minus: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: C.surface,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: C.border, marginRight: 8,
+    borderWidth: 1, borderColor: C.border,
+    marginRight: 8,
   },
   minusText: { color: C.white, fontSize: 20, fontWeight: '900', marginTop: -2 },
   plus: {

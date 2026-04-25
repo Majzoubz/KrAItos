@@ -4,27 +4,15 @@ import {
   TextInput, Modal, Switch, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import {
-  getHealthProfile, saveHealthProfile, getHealthDay, saveHealthDay,
-  getHealthHistory, getHealthSummary, dateKey,
-  isStepCountingAvailable, requestPedometerPermission,
-  syncTodaySteps, subscribeSteps, stepsToActivityLevel,
-} from '../utils/health';
-import {
-  isAppleHealthAvailable, isHealthConnectAvailable,
-  connectAppleHealth, connectHealthConnect,
-  fetchTodayFromAppleHealth, fetchTodayFromHealthConnect,
-} from '../utils/wearables';
-import { tick as hTick, select as hSelect, success as hSuccess } from '../utils/haptics';
-import { LoadingState } from '../components/UI';
+import { useI18n } from '../i18n/I18nContext';
 
-const PROVIDERS = [
-  { id: 'pedometer', name: 'Phone Pedometer', sub: 'iPhone / Android steps', icon: '👟', live: true },
-  { id: 'apple',     name: 'Apple Health',    sub: 'HR · Sleep · Workouts',  icon: '', tint: '#FF3B6E', soon: true, devBuild: true },
-  { id: 'google',    name: 'Google Fit',      sub: 'Android health data',    icon: '', tint: '#34A853', soon: true, devBuild: true },
-  { id: 'garmin',    name: 'Garmin',          sub: 'Watch & cycling data',   icon: '⌚', tint: '#0073CF', soon: true },
-  { id: 'fitbit',    name: 'Fitbit',          sub: 'Tracker & Premium',      icon: '◆',  tint: '#00B0B9', soon: true },
-  { id: 'whoop',     name: 'Whoop',           sub: 'Recovery & strain',      icon: '◉',  tint: '#FFD600', soon: true },
+const PROVIDERS_BASE = [
+  { id: 'pedometer', nameKey: 'health.providerPedometer', subKey: 'health.providerPedometerSub', icon: '👟', live: true },
+  { id: 'apple',     nameKey: 'health.appleTitle',        subKey: 'health.providerAppleSub',     icon: '', tint: '#FF3B6E', soon: true, devBuild: true },
+  { id: 'google',    nameKey: 'health.providerGoogleName', subKey: 'health.providerGoogleSub',   icon: '', tint: '#34A853', soon: true, devBuild: true },
+  { id: 'garmin',    nameKey: 'health.providerGarmin',    subKey: 'health.providerGarminSub',    icon: '⌚', tint: '#0073CF', soon: true },
+  { id: 'fitbit',    nameKey: 'health.providerFitbit',    subKey: 'health.providerFitbitSub',    icon: '◆',  tint: '#00B0B9', soon: true },
+  { id: 'whoop',     nameKey: 'health.providerWhoop',     subKey: 'health.providerWhoopSub',     icon: '◉',  tint: '#FFD600', soon: true },
 ];
 
 function showAlert(title, msg) {
@@ -32,7 +20,7 @@ function showAlert(title, msg) {
   try { Alert.alert(title, msg); } catch {}
 }
 
-function StatCard({ label, value, unit, icon, tint, onPress }) {
+function StatCard({ label, value, unit, icon, tint, onPress, tapEditLabel }) {
   const { C } = useTheme();
   return (
     <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={{
@@ -58,12 +46,12 @@ function StatCard({ label, value, unit, icon, tint, onPress }) {
           <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700', marginLeft: 4, marginBottom: 4 }}>{unit}</Text>
         ) : null}
       </View>
-      <Text style={{ color: C.muted + 'CC', fontSize: 10, marginTop: 4 }}>Tap to edit</Text>
+      <Text style={{ color: C.muted + 'CC', fontSize: 10, marginTop: 4 }}>{tapEditLabel || 'Tap to edit'}</Text>
     </TouchableOpacity>
   );
 }
 
-function ProviderCard({ p, connected, onPress }) {
+function ProviderCard({ p, connected, onPress, connectedLabel, devBuildLabel, comingSoonLabel, isRTL }) {
   const { C } = useTheme();
   return (
     <TouchableOpacity
@@ -87,18 +75,18 @@ function ProviderCard({ p, connected, onPress }) {
           <Text style={{ color: C.white, fontSize: 15, fontWeight: '800' }}>{p.name}</Text>
           {connected && (
             <View style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: C.green + '22', borderRadius: 6 }}>
-              <Text style={{ color: C.green, fontSize: 9, fontWeight: '900' }}>CONNECTED</Text>
+              <Text style={{ color: C.green, fontSize: 9, fontWeight: '900' }}>{connectedLabel || 'CONNECTED'}</Text>
             </View>
           )}
         </View>
         <Text style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>{p.sub}</Text>
         {p.soon && (
           <Text style={{ color: C.muted, fontSize: 10, marginTop: 4, fontStyle: 'italic' }}>
-            {p.devBuild ? 'Requires custom dev build' : 'Coming soon'}
+            {p.devBuild ? (devBuildLabel || 'Requires custom dev build') : (comingSoonLabel || 'Coming soon')}
           </Text>
         )}
       </View>
-      <Text style={{ color: C.green, fontSize: 18, fontWeight: '900' }}>›</Text>
+      <Text style={{ color: C.green, fontSize: 18, fontWeight: '900' }}>{isRTL ? '‹' : '›'}</Text>
     </TouchableOpacity>
   );
 }
@@ -130,6 +118,7 @@ function StepsBarChart({ days, color }) {
 
 function ManualEditModal({ visible, onClose, today, onSave }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const [steps, setSteps]       = useState('');
   const [restingHr, setRestHr]  = useState('');
   const [avgHr, setAvgHr]       = useState('');
@@ -146,11 +135,11 @@ function ManualEditModal({ visible, onClose, today, onSave }) {
   }, [visible, today]);
 
   const fields = [
-    { k: 'steps',     label: 'Steps',          unit: 'steps', val: steps,     set: setSteps,   icon: '👟' },
-    { k: 'restingHr', label: 'Resting HR',     unit: 'bpm',   val: restingHr, set: setRestHr,  icon: '🫀' },
-    { k: 'avgHr',     label: 'Average HR',     unit: 'bpm',   val: avgHr,     set: setAvgHr,   icon: '❤️' },
-    { k: 'sleepHr',   label: 'Sleep',          unit: 'hours', val: sleepHr,   set: setSleepHr, icon: '🛌' },
-    { k: 'activeMin', label: 'Active minutes', unit: 'min',   val: activeMin, set: setActive,  icon: '🔥' },
+    { k: 'steps',     label: t('health.fSteps'),   unit: t('health.uSteps'), val: steps,     set: setSteps,   icon: '👟' },
+    { k: 'restingHr', label: t('health.fResting'), unit: t('health.uBpm'),   val: restingHr, set: setRestHr,  icon: '🫀' },
+    { k: 'avgHr',     label: t('health.fAvg'),     unit: t('health.uBpm'),   val: avgHr,     set: setAvgHr,   icon: '❤️' },
+    { k: 'sleepHr',   label: t('health.fSleep'),   unit: t('health.uHours'), val: sleepHr,   set: setSleepHr, icon: '🛌' },
+    { k: 'activeMin', label: t('health.fActive'),  unit: t('health.uMin'),   val: activeMin, set: setActive,  icon: '🔥' },
   ];
 
   const save = () => {
@@ -171,8 +160,8 @@ function ManualEditModal({ visible, onClose, today, onSave }) {
           <View style={{ alignItems: 'center', marginBottom: 16 }}>
             <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: C.border }} />
           </View>
-          <Text style={{ color: C.white, fontSize: 22, fontWeight: '900', marginBottom: 4 }}>Today's Health</Text>
-          <Text style={{ color: C.muted, fontSize: 13, marginBottom: 18 }}>Enter what you have. Leave blank to skip.</Text>
+          <Text style={{ color: C.white, fontSize: 22, fontWeight: '900', marginBottom: 4 }}>{t('health.todayHealth')}</Text>
+          <Text style={{ color: C.muted, fontSize: 13, marginBottom: 18 }}>{t('health.todayHealthHint')}</Text>
           <ScrollView style={{ maxHeight: 380 }}>
             {fields.map(f => (
               <View key={f.k} style={{ marginBottom: 12 }}>
@@ -199,10 +188,10 @@ function ManualEditModal({ visible, onClose, today, onSave }) {
           </ScrollView>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
             <TouchableOpacity onPress={() => { hSelect(); onClose(); }} style={{ flex: 1, paddingVertical: 16, borderRadius: 14, backgroundColor: C.surface, alignItems: 'center', borderWidth: 1, borderColor: C.border }}>
-              <Text style={{ color: C.muted, fontWeight: '800' }}>Cancel</Text>
+              <Text style={{ color: C.muted, fontWeight: '800' }}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={save} style={{ flex: 1.4, paddingVertical: 16, borderRadius: 14, backgroundColor: C.green, alignItems: 'center' }}>
-              <Text style={{ color: C.bg, fontWeight: '900', letterSpacing: 1 }}>SAVE</Text>
+              <Text style={{ color: C.bg, fontWeight: '900', letterSpacing: 1 }}>{t('health.save')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -213,8 +202,10 @@ function ManualEditModal({ visible, onClose, today, onSave }) {
 
 export default function HealthScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { t, isRTL } = useI18n();
   const s = makeStyles(C);
   const uid = user?.email || user?.uid;
+  const PROVIDERS = PROVIDERS_BASE.map(p => ({ ...p, name: t(p.nameKey), sub: t(p.subKey) }));
 
   const [profile, setProfile]   = useState(null);
   const [today, setToday]       = useState(null);
@@ -264,12 +255,12 @@ export default function HealthScreen({ user, onNavigate }) {
     hSelect();
     const ok = await isStepCountingAvailable();
     if (!ok) {
-      showAlert('Not available', 'Step counting is not available on this device.');
+      showAlert(t('health.notAvail'), t('health.notAvailMsg'));
       return;
     }
     const perm = await requestPedometerPermission();
     if (!perm.granted) {
-      showAlert('Permission needed', perm.reason || 'Step access was denied. You can enable it in your device settings.');
+      showAlert(t('health.permNeeded'), perm.reason || t('health.permFallback'));
       const np = await saveHealthProfile(uid, {
         provider: 'pedometer',
         permissions: { pedometer: false },
@@ -295,13 +286,12 @@ export default function HealthScreen({ user, onNavigate }) {
     hSelect();
     const avail = await isAppleHealthAvailable();
     if (!avail) {
-      showAlert('Apple Health',
-        "Reading live Apple Health data needs a custom Expo dev build with the react-native-health module. In Expo Go this isn't available. Run `eas build --profile development` after installing it, then come back and tap Connect.");
+      showAlert(t('health.appleTitle'), t('health.appleNotAvailMsg'));
       return;
     }
     setSyncing(true);
     const r = await connectAppleHealth();
-    if (!r.ok) { setSyncing(false); showAlert('Apple Health', `Couldn't connect: ${r.reason || 'permission denied'}`); return; }
+    if (!r.ok) { setSyncing(false); showAlert(t('health.appleTitle'), t('health.connectFail', { reason: r.reason || t('health.permDeniedReason') })); return; }
     const data = await fetchTodayFromAppleHealth();
     if (data) await saveHealthDay(uid, new Date(), { ...data, source: 'apple', syncedAt: Date.now() });
     const np = await saveHealthProfile(uid, { provider: 'apple', autoSync: true, connectedAt: Date.now(), permissions: { apple: true } });
@@ -312,13 +302,12 @@ export default function HealthScreen({ user, onNavigate }) {
     hSelect();
     const avail = await isHealthConnectAvailable();
     if (!avail) {
-      showAlert('Health Connect',
-        "Reading live Health Connect data needs a custom Expo dev build with the react-native-health-connect module. In Expo Go this isn't available. Run `eas build --profile development` after installing it, then come back and tap Connect.");
+      showAlert(t('health.googleTitle'), t('health.googleNotAvailMsg'));
       return;
     }
     setSyncing(true);
     const r = await connectHealthConnect();
-    if (!r.ok) { setSyncing(false); showAlert('Health Connect', `Couldn't connect: ${r.reason || 'permission denied'}`); return; }
+    if (!r.ok) { setSyncing(false); showAlert(t('health.googleTitle'), t('health.connectFail', { reason: r.reason || t('health.permDeniedReason') })); return; }
     const data = await fetchTodayFromHealthConnect();
     if (data) await saveHealthDay(uid, new Date(), { ...data, source: 'google', syncedAt: Date.now() });
     const np = await saveHealthProfile(uid, { provider: 'google', autoSync: true, connectedAt: Date.now(), permissions: { google: true } });
@@ -332,8 +321,8 @@ export default function HealthScreen({ user, onNavigate }) {
     if (p.soon) {
       hSelect();
       showAlert(
-        `${p.name} integration`,
-        `${p.name} integration is on the roadmap. For now, log values manually below — the AI uses them for plan adaptation.`
+        t('health.providerSoonTitle', { name: p.name }),
+        t('health.providerSoonMsg', { name: p.name })
       );
       return;
     }
@@ -353,7 +342,7 @@ export default function HealthScreen({ user, onNavigate }) {
 
   const syncSteps = async () => {
     if (available === false) {
-      showAlert('Not available', 'Live step sync is only available on iPhone or Android.');
+      showAlert(t('health.notAvail'), t('health.liveOnly'));
       return;
     }
     setSyncing(true);
@@ -361,7 +350,7 @@ export default function HealthScreen({ user, onNavigate }) {
     const perm = await requestPedometerPermission();
     if (!perm.granted) {
       setSyncing(false);
-      showAlert('Permission denied', perm.reason || 'Enable motion access in your device settings.');
+      showAlert(t('health.permDenied'), perm.reason || t('health.permDeniedMsg'));
       return;
     }
     const steps = await syncTodaySteps(uid);
@@ -379,7 +368,7 @@ export default function HealthScreen({ user, onNavigate }) {
   if (loading) {
     return (
       <SafeAreaView style={s.safe}>
-        <LoadingState message="Loading your health data…" />
+        <LoadingState message={t('health.loading')} />
       </SafeAreaView>
     );
   }
@@ -390,9 +379,9 @@ export default function HealthScreen({ user, onNavigate }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <TouchableOpacity onPress={() => { hSelect(); onNavigate('profile'); }} style={s.backBtn}>
-          <Text style={s.backTxt}>‹</Text>
+          <Text style={s.backTxt}>{isRTL ? '›' : '‹'}</Text>
         </TouchableOpacity>
-        <Text style={s.title}>Health & Activity</Text>
+        <Text style={s.title}>{t('health.title')}</Text>
         <TouchableOpacity onPress={syncSteps} style={s.syncBtn} disabled={syncing}>
           {syncing ? <ActivityIndicator size="small" color={C.bg} /> : <Text style={s.syncTxt}>↻</Text>}
         </TouchableOpacity>
@@ -400,66 +389,70 @@ export default function HealthScreen({ user, onNavigate }) {
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 40 }}>
         <View style={s.heroCard}>
-          <Text style={s.heroLabel}>TODAY · STEPS</Text>
+          <Text style={s.heroLabel}>{t('health.todayStepsLabel')}</Text>
           <Text style={s.heroBig}>{today?.steps != null ? today.steps.toLocaleString() : '—'}</Text>
           <View style={s.heroBarBg}>
             <View style={[s.heroBarFill, { width: `${Math.min(100, ((today?.steps || 0) / 10000) * 100)}%` }]} />
           </View>
           <Text style={s.heroSub}>
             {today?.steps != null
-              ? `${Math.max(0, 10000 - today.steps).toLocaleString()} to your 10,000 goal`
-              : 'Connect a source or sync manually'}
+              ? t('health.toGoal', { n: Math.max(0, 10000 - today.steps).toLocaleString() })
+              : t('health.connectOrSync')}
           </Text>
         </View>
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-          <StatCard label="Resting HR" value={today?.restingHr} unit="bpm" icon="🫀" tint="#FF3B6E" onPress={() => setEdit(true)} />
-          <StatCard label="Sleep"      value={today?.sleepHr}   unit="hr"  icon="🛌" tint="#7B61FF" onPress={() => setEdit(true)} />
-          <StatCard label="Active"     value={today?.activeMin} unit="min" icon="🔥" tint="#FF8A00" onPress={() => setEdit(true)} />
+          <StatCard label={t('health.fResting')} value={today?.restingHr} unit={t('health.uBpm')} icon="🫀" tint="#FF3B6E" onPress={() => setEdit(true)} tapEditLabel={t('health.tapEdit')} />
+          <StatCard label={t('health.fSleep')}      value={today?.sleepHr}   unit={t('health.uHr')}  icon="🛌" tint="#7B61FF" onPress={() => setEdit(true)} tapEditLabel={t('health.tapEdit')} />
+          <StatCard label={t('health.fActive')}     value={today?.activeMin} unit={t('health.uMin')} icon="🔥" tint="#FF8A00" onPress={() => setEdit(true)} tapEditLabel={t('health.tapEdit')} />
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionLabel}>WEEKLY STEP TREND</Text>
+          <Text style={s.sectionLabel}>{t('health.weeklyTrend')}</Text>
           <View style={s.chartCard}>
             <StepsBarChart days={summary?.days || []} color={C.green} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border }}>
               <View>
-                <Text style={s.metaLabel}>7-day avg</Text>
+                <Text style={s.metaLabel}>{t('health.sevenDayAvg')}</Text>
                 <Text style={s.metaValue}>{summary?.avgSteps != null ? summary.avgSteps.toLocaleString() : '—'}</Text>
               </View>
               <View>
-                <Text style={s.metaLabel}>Inferred level</Text>
+                <Text style={s.metaLabel}>{t('health.inferredLevel')}</Text>
                 <Text style={[s.metaValue, { color: C.green }]}>{inferred || '—'}</Text>
               </View>
               <View>
-                <Text style={s.metaLabel}>Sleep avg</Text>
-                <Text style={s.metaValue}>{summary?.avgSleep != null ? summary.avgSleep + 'h' : '—'}</Text>
+                <Text style={s.metaLabel}>{t('health.sleepAvg')}</Text>
+                <Text style={s.metaValue}>{summary?.avgSleep != null ? summary.avgSleep + t('health.uHr') : '—'}</Text>
               </View>
             </View>
           </View>
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionLabel}>DATA SOURCES</Text>
+          <Text style={s.sectionLabel}>{t('health.dataSources')}</Text>
           {PROVIDERS.map(p => (
             <ProviderCard
               key={p.id}
               p={p}
               connected={profile?.provider === p.id && (p.id !== 'pedometer' || profile?.permissions?.pedometer)}
               onPress={() => handleProvider(p)}
+              connectedLabel={t('health.connected')}
+              devBuildLabel={t('health.requiresDev')}
+              comingSoonLabel={t('health.comingSoon')}
+              isRTL={isRTL}
             />
           ))}
           <TouchableOpacity onPress={manualSync} style={[s.manualBtn]}>
-            <Text style={s.manualBtnText}>✎  Manual Entry</Text>
+            <Text style={s.manualBtnText}>✎  {t('health.manualEntry')}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionLabel}>PREFERENCES</Text>
+          <Text style={s.sectionLabel}>{t('health.preferences')}</Text>
           <View style={s.prefRow}>
             <View style={{ flex: 1 }}>
-              <Text style={s.prefLabel}>Auto-sync steps</Text>
-              <Text style={s.prefSub}>Refresh in the background while using the app</Text>
+              <Text style={s.prefLabel}>{t('health.autoSync')}</Text>
+              <Text style={s.prefSub}>{t('health.autoSyncSub')}</Text>
             </View>
             <Switch
               value={!!profile?.autoSync}
@@ -469,10 +462,8 @@ export default function HealthScreen({ user, onNavigate }) {
             />
           </View>
           <View style={s.infoCard}>
-            <Text style={s.infoTitle}>How this affects your plan</Text>
-            <Text style={s.infoText}>
-              Your average daily steps and sleep are sent to the AI coach during weekly check-ins. If you're consistently more (or less) active than the activity level you picked at signup, the calorie target adjusts automatically.
-            </Text>
+            <Text style={s.infoTitle}>{t('health.howAffects')}</Text>
+            <Text style={s.infoText}>{t('health.howAffectsText')}</Text>
           </View>
         </View>
       </ScrollView>

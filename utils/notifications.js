@@ -3,6 +3,20 @@ import {
   requestPermission, hasPermission, scheduleAll, cancelAll,
   scheduleOneShot, cancelByCategory,
 } from './notifications.impl';
+import { tActive, setActiveLanguage } from '../i18n/translations';
+
+const SETTINGS_KEY = 'greengain_settings';
+
+async function ensureActiveLanguageLoaded() {
+  try {
+    const raw = await AsyncStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.language === 'string') {
+      setActiveLanguage(parsed.language);
+    }
+  } catch {}
+}
 
 export const PREF_KEY = 'greengain_notifications_enabled';
 export const CATEGORY_PREFS_KEY = 'greengain_notification_prefs_v1';
@@ -34,14 +48,16 @@ export function buildMealReminders(mealPlan) {
   for (const m of mealPlan) {
     const t = parseTimeString(m?.time);
     if (!t) continue;
-    const name = m.meal || 'Meal';
+    const name = m.meal || tActive('notif.meal.defaultName');
     const foods = Array.isArray(m.foods) && m.foods.length
       ? m.foods.slice(0, 2).join(', ') : null;
     out.push({
       category: 'meal',
       hour: t.hour, minute: t.minute,
-      title: `Time for ${name}`,
-      body: foods ? `${name}: ${foods}` : `It's time to eat your ${name.toLowerCase()}.`,
+      title: tActive('notif.meal.title', { name }),
+      body: foods
+        ? tActive('notif.meal.bodyWith', { name, foods })
+        : tActive('notif.meal.bodyDefault', { name: name.toLowerCase() }),
     });
     let preH = t.hour, preM = t.minute - 15;
     if (preM < 0) { preM += 60; preH -= 1; }
@@ -49,8 +65,8 @@ export function buildMealReminders(mealPlan) {
     out.push({
       category: 'meal',
       hour: preH, minute: preM,
-      title: `${name} in 15 minutes`,
-      body: `Get ready — ${name.toLowerCase()} at ${m.time}.`,
+      title: tActive('notif.meal.preTitle', { name }),
+      body: tActive('notif.meal.preBody', { name: name.toLowerCase(), time: m.time }),
     });
   }
   return out;
@@ -60,17 +76,17 @@ export function buildWaterReminders() {
   // Hourly nudges 9am–9pm
   const out = [];
   const messages = [
-    'Hydration check 💧 — sip a glass of water.',
-    'Time for water 💧 stay topped up.',
-    'Reminder: drink some water.',
-    '💧 Half a glass now keeps you sharp.',
-    'Water break! Even a few sips help.',
+    tActive('notif.water.body1'),
+    tActive('notif.water.body2'),
+    tActive('notif.water.body3'),
+    tActive('notif.water.body4'),
+    tActive('notif.water.body5'),
   ];
   for (let h = 9; h <= 21; h++) {
     out.push({
       category: 'water',
       hour: h, minute: 0,
-      title: 'Drink water',
+      title: tActive('notif.water.title'),
       body: messages[h % messages.length],
     });
   }
@@ -81,8 +97,8 @@ export function buildDinnerCheckReminder() {
   return [{
     category: 'dinnerCheck',
     hour: 20, minute: 0, // 8 PM
-    title: "Don't forget to log dinner",
-    body: "Log what you ate today so your AI coach can plan tomorrow.",
+    title: tActive('notif.dinner.title'),
+    body: tActive('notif.dinner.body'),
   }];
 }
 
@@ -92,8 +108,8 @@ export function buildWeeklyCheckin() {
     category: 'weekly',
     weekday: 1,         // 1 = Sunday on iOS Calendar trigger spec (impl handles)
     hour: 9, minute: 0,
-    title: 'Your weekly review is ready',
-    body: "Tap to see this week's wins, misses, and what to tweak.",
+    title: tActive('notif.weekly.title'),
+    body: tActive('notif.weekly.body'),
   }];
 }
 
@@ -112,12 +128,15 @@ export function buildWorkoutReminders(plan) {
     if (preM < 0) { preM += 60; preH -= 1; }
     if (preH < 0) preH += 24;
     const wd = day.day && dayMap[day.day] != null ? dayMap[day.day] : null;
+    const focus = day.focus || day.name;
     out.push({
       category: 'workout',
       weekday: wd != null ? wd + 1 : undefined, // iOS expects 1..7 with 1=Sun
       hour: preH, minute: preM,
-      title: 'Workout in 30 min',
-      body: day.focus || day.name ? `Coming up: ${day.focus || day.name}` : "You're up — gear up.",
+      title: tActive('notif.workout.title'),
+      body: focus
+        ? tActive('notif.workout.bodyWithFocus', { focus })
+        : tActive('notif.workout.bodyDefault'),
     });
   }
   return out;
@@ -162,6 +181,7 @@ export async function scheduleMealReminders(mealPlan, { force = false } = {}) {
   if (!enabled) return { scheduled: 0, reason: 'disabled' };
   const granted = force ? await requestPermission() : await hasPermission();
   if (!granted) return { scheduled: 0, reason: 'permission' };
+  await ensureActiveLanguageLoaded();
   const reminders = buildMealReminders(mealPlan);
   if (!reminders.length) return { scheduled: 0, reason: 'empty' };
   await cancelByCategory('meal');
@@ -174,6 +194,7 @@ export async function scheduleSmartReminders(plan, { force = false } = {}) {
   if (!enabled) return { scheduled: 0, reason: 'disabled' };
   const granted = force ? await requestPermission() : await hasPermission();
   if (!granted) return { scheduled: 0, reason: 'permission' };
+  await ensureActiveLanguageLoaded();
   const prefs = await getCategoryPrefs();
   await cancelAll();
 

@@ -3,16 +3,21 @@ import {
   StyleSheet, Text, View, TouchableOpacity, Animated, Platform, Image,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useT } from '../i18n/I18nContext';
 import BrandName from '../components/BrandName';
 export default function WelcomeScreen({ onStart }) {
   const { C } = useTheme();
+  const t = useT();
   const s = makeStyles(C);
   const fadeIn = useRef(new Animated.Value(0)).current;
   const slideUp = useRef(new Animated.Value(60)).current;
   const btnSlide = useRef(new Animated.Value(40)).current;
   const btnFade = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.7)).current;
+  const logoTranslateY = useRef(new Animated.Value(0)).current;
+  const bodyOpacity = useRef(new Animated.Value(1)).current;
   const glowPulse = useRef(new Animated.Value(0.6)).current;
+  const exitingRef = useRef(false);
 
   useEffect(() => {
     Animated.sequence([
@@ -41,27 +46,26 @@ export default function WelcomeScreen({ onStart }) {
       <View style={s.glowBottom} />
       <View style={s.glowCenter} />
 
-      <Animated.View style={[s.content, { opacity: fadeIn, transform: [{ translateY: slideUp }] }]}>
-        <Animated.View style={[s.logoWrap, { transform: [{ scale: logoScale }] }]}>
+      <Animated.View style={[s.content, { opacity: fadeIn, transform: [{ translateY: slideUp }], pointerEvents: 'box-none' }]}>
+        <Animated.View style={[s.logoWrap, { transform: [{ translateY: logoTranslateY }, { scale: logoScale }] }]}>
           <Animated.View style={[s.logoGlow, { opacity: glowPulse }]} />
           <Image source={require('../assets/logo.png')} style={s.logoImage} resizeMode="contain" />
         </Animated.View>
 
+        <Animated.View style={{ opacity: bodyOpacity, alignItems: 'center', alignSelf: 'stretch' }}>
         <BrandName style={s.brand} />
-        <Text style={s.tagline}>YOUR AI FITNESS COACH</Text>
+        <Text style={s.tagline}>{t('welcome.tagline')}</Text>
 
         <View style={s.divider} />
 
-        <Text style={s.heroText}>
-          The smartest way to{'\n'}transform your body
-        </Text>
+        <Text style={s.heroText}>{t('welcome.hero')}</Text>
 
         <View style={s.featureGrid}>
           {[
-            { icon: '⚡', label: 'Smart Nutrition' },
-            { icon: '🧠', label: 'AI Coaching' },
-            { icon: '📸', label: 'Meal Scanner' },
-            { icon: '📊', label: 'Progress Track' },
+            { icon: '⚡', label: t('welcome.feature.nutrition') },
+            { icon: '🧠', label: t('welcome.feature.coaching') },
+            { icon: '📸', label: t('welcome.feature.scanner') },
+            { icon: '📊', label: t('welcome.feature.progress') },
           ].map((f, i) => (
             <View key={i} style={s.featureItem}>
               <View style={s.featureIconWrap}>
@@ -71,13 +75,27 @@ export default function WelcomeScreen({ onStart }) {
             </View>
           ))}
         </View>
+        </Animated.View>
       </Animated.View>
 
       <Animated.View style={[s.footer, { opacity: btnFade, transform: [{ translateY: btnSlide }] }]}>
-        <TouchableOpacity style={s.startBtn} onPress={onStart} activeOpacity={0.85}>
-          <Text style={s.startBtnText}>GET STARTED</Text>
+        <TouchableOpacity
+          style={s.startBtn}
+          onPress={() => {
+            if (exitingRef.current) return;
+            exitingRef.current = true;
+            Animated.parallel([
+              Animated.timing(bodyOpacity, { toValue: 0, duration: 220, useNativeDriver: true }),
+              Animated.timing(btnFade,    { toValue: 0, duration: 200, useNativeDriver: true }),
+              Animated.timing(logoScale,  { toValue: 0.66, duration: 280, useNativeDriver: true }),
+              Animated.timing(logoTranslateY, { toValue: -160, duration: 280, useNativeDriver: true }),
+            ]).start(() => onStart && onStart());
+          }}
+          activeOpacity={0.85}
+        >
+          <Text style={s.startBtnText}>{t('welcome.start')}</Text>
         </TouchableOpacity>
-        <Text style={s.footerNote}>Free to use · No credit card required</Text>
+        <Text style={s.footerNote}>{t('welcome.note')}</Text>
       </Animated.View>
     </View>
   );

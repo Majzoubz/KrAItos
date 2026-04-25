@@ -4,6 +4,7 @@ import {
   SafeAreaView, ScrollView, Alert, ActivityIndicator, Platform, Animated, Easing,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 import { lookupBarcode, macrosForGrams, macrosForServings } from '../utils/openFoodFacts';
 
@@ -17,6 +18,14 @@ try {
 
 const TODAY = new Date().toDateString();
 const MEAL_TIMES = ['Breakfast', 'Morning Snack', 'Lunch', 'Afternoon Snack', 'Dinner', 'Late Snack'];
+const MEAL_TIME_KEYS = {
+  'Breakfast': 'barcode.mealTime.breakfast',
+  'Morning Snack': 'barcode.mealTime.morningSnack',
+  'Lunch': 'barcode.mealTime.lunch',
+  'Afternoon Snack': 'barcode.mealTime.afternoonSnack',
+  'Dinner': 'barcode.mealTime.dinner',
+  'Late Snack': 'barcode.mealTime.lateSnack',
+};
 
 function pickMealTimeForNow() {
   const h = new Date().getHours();
@@ -30,6 +39,7 @@ function pickMealTimeForNow() {
 
 export default function BarcodeScanScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { t, isRTL } = useI18n();
   const s = makeStyles(C);
   const uid = user.email || user.uid;
 
@@ -66,7 +76,7 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
     try {
       const p = await lookupBarcode(code);
       if (!p) {
-        setError(`Barcode ${code} isn't in the food database. Tap "Use anyway" to log manually.`);
+        setError(t('barcode.notFound', { code }));
         setProduct({ barcode: code, name: '', brand: '', per100g: {}, perServing: null, servingQty: 0 });
       } else {
         setProduct(p);
@@ -75,7 +85,7 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
         setAmount(p.perServing ? '1' : (p.servingQty ? String(p.servingQty) : '100'));
       }
     } catch (e) {
-      setError(e.message || 'Lookup failed. Check your connection and try again.');
+      setError(e.message || t('barcode.lookupFailed'));
     } finally {
       setLoading(false);
     }
@@ -108,7 +118,7 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
     const name = editName.trim() || product.name || 'Scanned product';
     const macros = computedMacros;
     if (!macros.calories && !macros.protein) {
-      Alert.alert('Need macros', 'No macros found for this product. Edit manually first.');
+      Alert.alert(t('barcode.alerts.needMacrosTitle'), t('barcode.alerts.needMacros'));
       return;
     }
     const FOOD_KEY = KEYS.FOODLOG(user.uid, TODAY);
@@ -123,10 +133,21 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
       barcode: product.barcode,
     };
     await Storage.set(FOOD_KEY, [...existing, entry]);
-    Alert.alert('Logged ✓', `${entry.name} → ${mealTime}\n${entry.calories} kcal · ${entry.protein}P / ${entry.carbs}C / ${entry.fat}F`, [
-      { text: 'Scan another', onPress: () => resetForNext() },
-      { text: 'Done', onPress: () => onNavigate('foodlog') },
-    ]);
+    Alert.alert(
+      t('barcode.alerts.loggedTitle'),
+      t('barcode.alerts.loggedMsg', {
+        name: entry.name,
+        mealTime: t(MEAL_TIME_KEYS[mealTime] || 'barcode.mealTime.lunch'),
+        calories: entry.calories,
+        protein: entry.protein,
+        carbs: entry.carbs,
+        fat: entry.fat,
+      }),
+      [
+        { text: t('barcode.alerts.scanAnother'), onPress: () => resetForNext() },
+        { text: t('barcode.alerts.done'), onPress: () => onNavigate('foodlog') },
+      ]
+    );
   };
 
   const resetForNext = () => {
@@ -139,11 +160,11 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
   if (!CameraView && !isWeb) {
     return (
       <SafeAreaView style={s.root}>
-        <ScreenHeader C={C} s={s} onNavigate={onNavigate} />
+        <ScreenHeader C={C} s={s} onNavigate={onNavigate} t={t} isRTL={isRTL} />
         <View style={s.center}>
-          <Text style={s.title}>Camera unavailable</Text>
-          <Text style={s.sub}>This build doesn't include camera support. Enter a barcode manually below.</Text>
-          <ManualEntry s={s} C={C} value={manualCode} onChange={setManualCode} onSubmit={submitManual} />
+          <Text style={s.title}>{t('barcode.cameraUnavailableTitle')}</Text>
+          <Text style={s.sub}>{t('barcode.cameraUnavailableSub')}</Text>
+          <ManualEntry s={s} C={C} value={manualCode} onChange={setManualCode} onSubmit={submitManual} t={t} />
         </View>
       </SafeAreaView>
     );
@@ -151,7 +172,7 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
 
   return (
     <SafeAreaView style={s.root}>
-      <ScreenHeader C={C} s={s} onNavigate={onNavigate} />
+      <ScreenHeader C={C} s={s} onNavigate={onNavigate} t={t} isRTL={isRTL} />
 
       {!scanned && !isWeb && permission?.granted && CameraView && (
         <View style={s.cameraWrap}>
@@ -172,26 +193,26 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
               transform: [{ translateY: lineAnim.interpolate({ inputRange: [0, 1], outputRange: [-80, 80] }) }],
             }]} />
           </View>
-          <Text style={s.viewfinderHint}>Point at a packaged food barcode</Text>
+          <Text style={s.viewfinderHint}>{t('barcode.viewfinderHint')}</Text>
         </View>
       )}
 
       {!scanned && !isWeb && permission && !permission.granted && (
         <View style={s.center}>
-          <Text style={s.title}>Camera permission needed</Text>
-          <Text style={s.sub}>To scan barcodes we need access to your camera.</Text>
+          <Text style={s.title}>{t('barcode.permTitle')}</Text>
+          <Text style={s.sub}>{t('barcode.permSub')}</Text>
           <TouchableOpacity style={s.primaryBtn} onPress={requestPermission}>
-            <Text style={s.primaryBtnText}>Grant access</Text>
+            <Text style={s.primaryBtnText}>{t('barcode.grant')}</Text>
           </TouchableOpacity>
-          <ManualEntry s={s} C={C} value={manualCode} onChange={setManualCode} onSubmit={submitManual} />
+          <ManualEntry s={s} C={C} value={manualCode} onChange={setManualCode} onSubmit={submitManual} t={t} />
         </View>
       )}
 
       {!scanned && isWeb && (
         <View style={s.center}>
-          <Text style={s.title}>Scan a barcode</Text>
-          <Text style={s.sub}>Live camera scanning works in the mobile app. On web, type the barcode below.</Text>
-          <ManualEntry s={s} C={C} value={manualCode} onChange={setManualCode} onSubmit={submitManual} />
+          <Text style={s.title}>{t('barcode.webTitle')}</Text>
+          <Text style={s.sub}>{t('barcode.webSub')}</Text>
+          <ManualEntry s={s} C={C} value={manualCode} onChange={setManualCode} onSubmit={submitManual} t={t} />
         </View>
       )}
 
@@ -200,7 +221,7 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
           {loading && (
             <View style={s.center}>
               <ActivityIndicator color={C.green} size="large" />
-              <Text style={s.sub}>Looking up product…</Text>
+              <Text style={s.sub}>{t('barcode.lookingUp')}</Text>
             </View>
           )}
 
@@ -213,18 +234,18 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
           {product && !loading && (
             <>
               <View style={s.productCard}>
-                <Text style={s.productBrand}>{product.brand || 'Unknown brand'}</Text>
+                <Text style={s.productBrand}>{product.brand || t('barcode.unknownBrand')}</Text>
                 <TextInput
                   style={s.nameInput}
                   value={editName}
                   onChangeText={setEditName}
-                  placeholder="Product name"
+                  placeholder={t('barcode.namePh')}
                   placeholderTextColor={C.muted}
                 />
-                <Text style={s.barcodeLabel}>Barcode {product.barcode}</Text>
+                <Text style={s.barcodeLabel}>{t('barcode.barcodeLabel', { code: product.barcode })}</Text>
                 {product.nutriscore ? (
                   <View style={[s.nutriscorePill, nutriColor(product.nutriscore, C)]}>
-                    <Text style={s.nutriscoreText}>Nutri-Score {product.nutriscore}</Text>
+                    <Text style={s.nutriscoreText}>{t('barcode.nutriscore', { grade: product.nutriscore })}</Text>
                   </View>
                 ) : null}
               </View>
@@ -235,14 +256,14 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
                     style={[s.unitBtn, unit === 'servings' && s.unitBtnActive]}
                     onPress={() => { setUnit('servings'); setAmount('1'); }}
                   >
-                    <Text style={[s.unitBtnText, unit === 'servings' && s.unitBtnTextActive]}>Servings</Text>
+                    <Text style={[s.unitBtnText, unit === 'servings' && s.unitBtnTextActive]}>{t('barcode.unit.servings')}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
                   style={[s.unitBtn, unit === 'grams' && s.unitBtnActive]}
                   onPress={() => { setUnit('grams'); setAmount(product.servingQty ? String(product.servingQty) : '100'); }}
                 >
-                  <Text style={[s.unitBtnText, unit === 'grams' && s.unitBtnTextActive]}>Grams</Text>
+                  <Text style={[s.unitBtnText, unit === 'grams' && s.unitBtnTextActive]}>{t('barcode.unit.grams')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -256,7 +277,7 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
                   onChangeText={(v) => setAmount(v.replace(/[^0-9.]/g, ''))}
                   keyboardType="decimal-pad"
                 />
-                <Text style={s.amountUnit}>{unit === 'grams' ? 'g' : 'serv'}</Text>
+                <Text style={s.amountUnit}>{unit === 'grams' ? t('barcode.unit.gShort') : t('barcode.unit.servShort')}</Text>
                 <TouchableOpacity style={s.stepBtn} onPress={() => setAmount(a => String((parseFloat(a) || 0) + (unit === 'grams' ? 10 : 0.5)))}>
                   <Text style={s.stepBtnText}>+</Text>
                 </TouchableOpacity>
@@ -269,7 +290,7 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
                 <Macro v={computedMacros.fat}     label="F" C={C} />
               </View>
 
-              <Text style={s.sectionLabel}>MEAL</Text>
+              <Text style={s.sectionLabel}>{t('barcode.section.meal')}</Text>
               <View style={s.mealRow}>
                 {MEAL_TIMES.map(m => (
                   <TouchableOpacity
@@ -277,17 +298,17 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
                     style={[s.mealChip, mealTime === m && s.mealChipActive]}
                     onPress={() => setMealTime(m)}
                   >
-                    <Text style={[s.mealChipText, mealTime === m && s.mealChipTextActive]}>{m}</Text>
+                    <Text style={[s.mealChipText, mealTime === m && s.mealChipTextActive]}>{t(MEAL_TIME_KEYS[m])}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               <TouchableOpacity style={s.addBtn} onPress={addToLog}>
-                <Text style={s.addBtnText}>ADD TO LOG</Text>
+                <Text style={s.addBtnText}>{t('barcode.addToLog')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={s.againBtn} onPress={resetForNext}>
-                <Text style={s.againBtnText}>Scan another</Text>
+                <Text style={s.againBtnText}>{t('barcode.scanAnother')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -297,33 +318,33 @@ export default function BarcodeScanScreen({ user, onNavigate }) {
   );
 }
 
-function ScreenHeader({ C, s, onNavigate }) {
+function ScreenHeader({ C, s, onNavigate, t, isRTL }) {
   return (
     <View style={s.header}>
       <TouchableOpacity onPress={() => onNavigate('foodlog')} style={s.backBtn}>
-        <Text style={s.backBtnText}>‹</Text>
+        <Text style={s.backBtnText}>{isRTL ? '›' : '‹'}</Text>
       </TouchableOpacity>
-      <Text style={s.headerTitle}>Scan Barcode</Text>
+      <Text style={s.headerTitle}>{t('barcode.header')}</Text>
       <View style={{ width: 36 }} />
     </View>
   );
 }
 
-function ManualEntry({ s, C, value, onChange, onSubmit }) {
+function ManualEntry({ s, C, value, onChange, onSubmit, t }) {
   return (
     <View style={s.manualWrap}>
-      <Text style={s.manualLabel}>Or enter barcode</Text>
+      <Text style={s.manualLabel}>{t('barcode.manualLabel')}</Text>
       <View style={s.manualRow}>
         <TextInput
           style={s.manualInput}
           value={value}
           onChangeText={(v) => onChange(v.replace(/[^0-9]/g, ''))}
-          placeholder="e.g. 3017620422003"
+          placeholder={t('barcode.manualPh')}
           placeholderTextColor={C.muted}
           keyboardType="number-pad"
         />
         <TouchableOpacity style={s.manualBtn} onPress={onSubmit}>
-          <Text style={s.manualBtnText}>Look up</Text>
+          <Text style={s.manualBtnText}>{t('barcode.lookup')}</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -4,6 +4,7 @@ import {
   SafeAreaView, ScrollView, Alert, ActivityIndicator, Dimensions,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 import { callAI, parseJSON } from '../utils/api';
 import { isVoiceAvailable, startVoice } from '../utils/voice';
@@ -12,9 +13,18 @@ const { width } = Dimensions.get('window');
 const TODAY = new Date().toDateString();
 
 const MEAL_TIMES = ['Breakfast', 'Morning Snack', 'Lunch', 'Afternoon Snack', 'Dinner', 'Late Snack'];
+const MEAL_TIME_KEYS = {
+  'Breakfast': 'foodlog.mealTime.breakfast',
+  'Morning Snack': 'foodlog.mealTime.morningSnack',
+  'Lunch': 'foodlog.mealTime.lunch',
+  'Afternoon Snack': 'foodlog.mealTime.afternoonSnack',
+  'Dinner': 'foodlog.mealTime.dinner',
+  'Late Snack': 'foodlog.mealTime.lateSnack',
+};
 
 export default function FoodLogScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const s = makeStyles(C);
   const [log, setLog]               = useState([]);
   const [plan, setPlan]             = useState(null);
@@ -67,8 +77,8 @@ export default function FoodLogScreen({ user, onNavigate }) {
   const remaining = target.calories - totals.calories;
 
   const addEntry = async () => {
-    if (!mealName.trim()) { Alert.alert('Enter meal name'); return; }
-    if (!calories || isNaN(parseInt(calories))) { Alert.alert('Enter valid calories'); return; }
+    if (!mealName.trim()) { Alert.alert(t('foodlog.alerts.enterName')); return; }
+    if (!calories || isNaN(parseInt(calories))) { Alert.alert(t('foodlog.alerts.enterCalories')); return; }
     const entry = {
       id: Date.now(),
       name: mealName.trim(),
@@ -98,7 +108,7 @@ export default function FoodLogScreen({ user, onNavigate }) {
       const parsed = parseJSON(raw, null);
       const items = parsed?.items || [];
       if (!items.length) {
-        Alert.alert('No foods detected', 'Try saying something like "I had a chicken burrito and a Coke."');
+        Alert.alert(t('foodlog.alerts.noFoodsTitle'), t('foodlog.alerts.noFoods'));
         return;
       }
       const newEntries = items.map((it, idx) => ({
@@ -115,9 +125,9 @@ export default function FoodLogScreen({ user, onNavigate }) {
       const updated = [...log, ...newEntries];
       await Storage.set(FOOD_KEY, updated);
       setLog(updated);
-      Alert.alert('Logged', `${newEntries.length} item${newEntries.length === 1 ? '' : 's'} added from "${transcript}"`);
+      Alert.alert(t('foodlog.alerts.loggedTitle'), t('foodlog.alerts.loggedMsg', { count: newEntries.length, transcript }));
     } catch (e) {
-      Alert.alert('Voice log failed', e.message || 'Could not parse what you said.');
+      Alert.alert(t('foodlog.alerts.voiceFailedTitle'), e.message || t('foodlog.alerts.voiceFailed'));
     } finally {
       setVoiceParsing(false);
     }
@@ -125,24 +135,24 @@ export default function FoodLogScreen({ user, onNavigate }) {
 
   const startVoiceLog = () => {
     if (!isVoiceAvailable()) {
-      Alert.alert('Voice not supported', 'Voice logging works in Chrome / Safari on the web. On mobile, use the + Add button or AI Scan.');
+      Alert.alert(t('foodlog.alerts.voiceUnsupportedTitle'), t('foodlog.alerts.voiceUnsupported'));
       return;
     }
     setVoiceListening(true);
     startVoice({
-      onResult: (t) => handleVoiceTranscript(t),
+      onResult: (transcript) => handleVoiceTranscript(transcript),
       onError: (e) => {
         setVoiceListening(false);
-        Alert.alert('Voice error', e?.message || 'Microphone error.');
+        Alert.alert(t('foodlog.alerts.voiceErrorTitle'), e?.message || t('foodlog.alerts.voiceError'));
       },
       onEnd: () => setVoiceListening(false),
     });
   };
 
   const deleteEntry = async (id) => {
-    Alert.alert('Remove item', 'Remove this entry from your log?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: async () => {
+    Alert.alert(t('foodlog.alerts.removeTitle'), t('foodlog.alerts.removeMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('foodlog.alerts.remove'), style: 'destructive', onPress: async () => {
         const updated = log.filter(e => e.id !== id);
         await Storage.set(FOOD_KEY, updated);
         setLog(updated);
@@ -151,7 +161,7 @@ export default function FoodLogScreen({ user, onNavigate }) {
   };
 
   const getAIFeedback = async () => {
-    if (log.length === 0) { Alert.alert('No meals logged', 'Add some meals first.'); return; }
+    if (log.length === 0) { Alert.alert(t('foodlog.alerts.noLogTitle'), t('foodlog.alerts.noLog')); return; }
     setAiLoading(true);
     try {
       const summary = log.map(e =>
@@ -163,9 +173,9 @@ export default function FoodLogScreen({ user, onNavigate }) {
       );
       const parsed = parseJSON(raw, null);
       if (parsed) setAiFeedback(parsed);
-      else Alert.alert('Error', 'Could not get AI feedback. Try again.');
+      else Alert.alert(t('common.error'), t('foodlog.alerts.aiErrorMsg'));
     } catch (e) {
-      Alert.alert('Error', e.message || 'Could not reach AI.');
+      Alert.alert(t('common.error'), e.message || t('foodlog.alerts.aiUnreach'));
     } finally {
       setAiLoading(false);
     }
@@ -191,7 +201,7 @@ export default function FoodLogScreen({ user, onNavigate }) {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
-        <Text style={s.titleBarText}>Nutrition</Text>
+        <Text style={s.titleBarText}>{t('foodlog.title')}</Text>
         <View style={{ flexDirection: 'row' }}>
           <TouchableOpacity
             style={s.iconHeaderBtn}
@@ -210,7 +220,7 @@ export default function FoodLogScreen({ user, onNavigate }) {
               : <Text style={s.voiceBtnText}>{voiceListening ? '🎙️ …' : '🎙️'}</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(!showAdd)}>
-            <Text style={s.addBtnText}>{showAdd ? 'Cancel' : '+ Add'}</Text>
+            <Text style={s.addBtnText}>{showAdd ? t('common.cancel') : t('foodlog.add')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -221,7 +231,7 @@ export default function FoodLogScreen({ user, onNavigate }) {
           <Text style={s.dateArrowText}>{'<'}</Text>
         </TouchableOpacity>
         <Text style={s.dateLabel}>
-          {isToday ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          {isToday ? t('foodlog.dateToday') : new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </Text>
         <TouchableOpacity style={[s.dateArrow, isToday && { opacity: 0.3 }]} onPress={goToNextDay} disabled={isToday}>
           <Text style={s.dateArrowText}>{'>'}</Text>
@@ -234,41 +244,48 @@ export default function FoodLogScreen({ user, onNavigate }) {
 
         {!loading && (
           <>
-            {/* Restaurant mode CTA */}
-            <TouchableOpacity
-              onPress={() => onNavigate('restaurant')}
-              activeOpacity={0.85}
-              style={[s.studioCard, { borderColor: C.green + '40', marginBottom: 10 }]}
-            >
-              <View style={s.studioBadge}>
-                <Text style={{ color: C.bg, fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>NEW</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.studioTitle}>🍽️ Restaurant mode</Text>
-                <Text style={s.studioSub}>
-                  Best macro picks from your favorite chain · fits your remaining calories
-                </Text>
-              </View>
-              <Text style={s.studioArrow}>→</Text>
-            </TouchableOpacity>
+            {/* Quick actions grid */}
+            <View style={s.quickGrid}>
+              <TouchableOpacity
+                style={s.quickTile}
+                activeOpacity={0.85}
+                onPress={() => onNavigate('mealstudio')}
+              >
+                <Text style={s.quickIcon}>✨</Text>
+                <Text style={s.quickTitle}>{t('foodlog.studioTitle').replace(/^[^\w]+/, '')}</Text>
+                <Text style={s.quickSub} numberOfLines={2}>{t('foodlog.studioSub')}</Text>
+              </TouchableOpacity>
 
-            {/* AI Meal Studio CTA */}
-            <TouchableOpacity
-              onPress={() => onNavigate('mealstudio')}
-              activeOpacity={0.85}
-              style={s.studioCard}
-            >
-              <View style={s.studioBadge}>
-                <Text style={{ color: C.bg, fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>NEW</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.studioTitle}>✨ AI Meal Studio</Text>
-                <Text style={s.studioSub}>
-                  Cook from your pantry · Plan a week from groceries · Scan your fridge
-                </Text>
-              </View>
-              <Text style={s.studioArrow}>→</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={s.quickTile}
+                activeOpacity={0.85}
+                onPress={() => onNavigate('restaurant')}
+              >
+                <Text style={s.quickIcon}>🍽️</Text>
+                <Text style={s.quickTitle}>{t('foodlog.restaurantTitle').replace(/^[^\w]+/, '')}</Text>
+                <Text style={s.quickSub} numberOfLines={2}>{t('foodlog.restaurantSub')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={s.quickTile}
+                activeOpacity={0.85}
+                onPress={() => onNavigate('scanner')}
+              >
+                <Text style={s.quickIcon}>📷</Text>
+                <Text style={s.quickTitle}>{t('foodlog.addForm.photoScan').replace(/^[^\w]+\s*/, '')}</Text>
+                <Text style={s.quickSub} numberOfLines={2}>AI vision · log a plate instantly</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={s.quickTile}
+                activeOpacity={0.85}
+                onPress={() => onNavigate('barcode')}
+              >
+                <Text style={s.quickIcon}>📊</Text>
+                <Text style={s.quickTitle}>{t('foodlog.addForm.barcode').replace(/^[^\w]+\s*/, '')}</Text>
+                <Text style={s.quickSub} numberOfLines={2}>Scan packaged food labels</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Quick Add Form */}
             {showAdd && (
@@ -581,6 +598,23 @@ const makeStyles = (C) => StyleSheet.create({
     borderWidth: 1.5, borderColor: C.green + '60',
     shadowColor: C.green, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.18, shadowRadius: 14,
   },
+  quickGrid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    justifyContent: 'space-between', marginBottom: 14,
+  },
+  quickTile: {
+    width: '48.5%',
+    backgroundColor: C.card,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: C.border,
+    minHeight: 110,
+  },
+  quickIcon: { fontSize: 22, marginBottom: 6 },
+  quickTitle: { color: C.white, fontSize: 13, fontWeight: '900', letterSpacing: 0.2, marginBottom: 4 },
+  quickSub: { color: C.muted, fontSize: 10, lineHeight: 13 },
   studioBadge: {
     backgroundColor: C.green, paddingHorizontal: 8, paddingVertical: 3,
     borderRadius: 6, marginRight: 12,

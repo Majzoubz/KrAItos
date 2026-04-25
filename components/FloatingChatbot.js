@@ -4,16 +4,10 @@ import {
   TextInput, ScrollView, ActivityIndicator, Platform, KeyboardAvoidingView,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useT, useI18n } from '../i18n/I18nContext';
 import { callGemini, isGeminiAvailable } from '../utils/gemini';
 import { buildUserContext } from '../utils/userContext';
 import BrandName from './BrandName';
-
-const SUGGESTIONS = [
-  'What should I eat for dinner tonight?',
-  'Why am I not losing weight?',
-  'Best post-workout meal for me?',
-  'How should I progress my lifts?',
-];
 
 const TOPIC_RULES = `You are KrAItos, an AI fitness, nutrition, and training coach embedded in a fitness app.
 
@@ -39,9 +33,17 @@ SAFETY:
 - Never recommend extreme calorie cuts (<1200 kcal for women, <1500 for men) or unsafe weight loss rates (>1% body weight/week).
 - For medical symptoms or anything beyond general fitness/nutrition, suggest seeing a qualified professional.`;
 
-export default function FloatingChatbot({ user }) {
+export default function FloatingChatbot({ user, onNavigate }) {
   const { C } = useTheme();
-  const s = makeStyles(C);
+  const t = useT();
+  const { isRTL } = useI18n();
+  const s = makeStyles(C, isRTL);
+  const SUGGESTIONS = [
+    t('chatbot.suggestion1'),
+    t('chatbot.suggestion2'),
+    t('chatbot.suggestion3'),
+    t('chatbot.suggestion4'),
+  ];
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]); // { role: 'user'|'model', content }
   const [input, setInput] = useState('');
@@ -80,7 +82,7 @@ export default function FloatingChatbot({ user }) {
     if (!isGeminiAvailable()) {
       setMessages(m => [...m, { role: 'user', content: text }, {
         role: 'model',
-        content: 'Chat is currently unavailable. Please try again later.',
+        content: t('chatbot.unavailable'),
       }]);
       setInput('');
       return;
@@ -94,9 +96,9 @@ export default function FloatingChatbot({ user }) {
     try {
       const sys = `${TOPIC_RULES}\n\n=== USER CONTEXT ===\n${contextText || '(loading…)'}\n=== END CONTEXT ===`;
       const reply = await callGemini(sys, next);
-      setMessages(m => [...m, { role: 'model', content: reply || 'No reply received. Try again.' }]);
+      setMessages(m => [...m, { role: 'model', content: reply || t('chatbot.noReply') }]);
     } catch (e) {
-      setMessages(m => [...m, { role: 'model', content: `Hmm, something broke: ${e.message || 'unknown error'}. Try again in a moment.` }]);
+      setMessages(m => [...m, { role: 'model', content: t('chatbot.error', { message: e.message || t('chatbot.errorUnknown') }) }]);
     } finally {
       setSending(false);
     }
@@ -111,9 +113,9 @@ export default function FloatingChatbot({ user }) {
     <>
       <TouchableOpacity
         style={s.fab}
-        onPress={() => setOpen(true)}
+        onPress={() => { if (onNavigate) onNavigate('coach'); else setOpen(true); }}
         activeOpacity={0.85}
-        accessibilityLabel="Open KrAItos chat"
+        accessibilityLabel={t('chatbot.openLabel')}
       >
         <Image source={require('../assets/logo.png')} style={s.fabIcon} resizeMode="contain" />
       </TouchableOpacity>
@@ -131,7 +133,7 @@ export default function FloatingChatbot({ user }) {
                   <Image source={require('../assets/logo.png')} style={s.headerLogo} resizeMode="contain" />
                   <View>
                     <BrandName style={s.headerTitle} />
-                    <Text style={s.headerSub}>Your personal coach · powered by Gemini</Text>
+                    <Text style={s.headerSub}>{t('fab.subtitle')}</Text>
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row' }}>
@@ -155,9 +157,9 @@ export default function FloatingChatbot({ user }) {
                 {messages.length === 0 ? (
                   <View style={s.welcome}>
                     <Image source={require('../assets/logo.png')} style={s.welcomeLogo} resizeMode="contain" />
-                    <Text style={s.welcomeTitle}>Hi {user?.fullName?.split(' ')[0] || 'there'} 👋</Text>
+                    <Text style={s.welcomeTitle}>{t('chatbot.welcomeGreeting', { name: user?.fullName?.split(' ')[0] || t('chatbot.thereDefault') })}</Text>
                     <Text style={s.welcomeText}>
-                      I know your goals, your plan, and what you ate today. Ask me anything about nutrition or training.
+                      {t('chatbot.welcomeText')}
                     </Text>
                     <View style={{ marginTop: 16, width: '100%' }}>
                       {SUGGESTIONS.map((q, i) => (
@@ -191,7 +193,7 @@ export default function FloatingChatbot({ user }) {
                   style={s.input}
                   value={input}
                   onChangeText={setInput}
-                  placeholder="Ask me anything fitness or nutrition…"
+                  placeholder={t('chatbot.placeholder')}
                   placeholderTextColor={C.muted}
                   multiline
                   onSubmitEditing={() => send()}
@@ -214,11 +216,11 @@ export default function FloatingChatbot({ user }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL) => StyleSheet.create({
   fab: {
     position: 'absolute',
-    right: 16,
-    bottom: 88, // sits above BottomNav (64–80px on mobile)
+    ...(isRTL ? { left: 16 } : { right: 16 }),
+    bottom: 88,
     width: 50,
     height: 50,
     borderRadius: 25,
@@ -260,14 +262,14 @@ const makeStyles = (C) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  headerLogo: { width: 36, height: 36, marginRight: 12 },
+  headerLeft: { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', flex: 1 },
+  headerLogo: { width: 36, height: 36, marginRight: isRTL ? 0 : 12, marginLeft: isRTL ? 12 : 0 },
   headerTitle: { color: C.white, fontSize: 18, fontWeight: '900', letterSpacing: 0.3 },
   headerSub: { color: C.muted, fontSize: 11, marginTop: 1 },
   headerBtn: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
-    marginLeft: 6, borderWidth: 1, borderColor: C.border,
+    marginLeft: isRTL ? 0 : 6, marginRight: isRTL ? 6 : 0, borderWidth: 1, borderColor: C.border,
   },
   headerBtnText: { color: C.white, fontSize: 14, fontWeight: '900' },
 
@@ -327,7 +329,7 @@ const makeStyles = (C) => StyleSheet.create({
   sendBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: C.green, alignItems: 'center', justifyContent: 'center',
-    marginLeft: 8,
+    marginLeft: isRTL ? 0 : 8, marginRight: isRTL ? 8 : 0,
   },
   sendBtnDisabled: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
   sendBtnText: { color: C.bg, fontSize: 22, fontWeight: '900', marginTop: -2 },

@@ -7,6 +7,7 @@ import Svg, { Path, Circle, Line, Rect, Text as SvgText, Defs, LinearGradient, S
 import { useTheme } from '../theme/ThemeContext';
 import { Storage, KEYS } from '../utils/storage';
 import { buildWeeklyContext } from '../utils/planAdapter';
+import { useI18n } from '../i18n/I18nContext';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const W = Dimensions.get('window').width;
@@ -21,11 +22,11 @@ function shortDate(d) {
   return new Date(d).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
 }
 
-function LineChart({ points, width, height, color, fillColor, target, C, yLabel }) {
+function LineChart({ points, width, height, color, fillColor, target, C, yLabel, noDataLabel }) {
   if (!points || points.length === 0) {
     return (
       <View style={{ height, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: C.muted, fontSize: 12 }}>No data yet</Text>
+        <Text style={{ color: C.muted, fontSize: 12 }}>{noDataLabel || 'No data yet'}</Text>
       </View>
     );
   }
@@ -120,11 +121,11 @@ function LineChart({ points, width, height, color, fillColor, target, C, yLabel 
   );
 }
 
-function BarChart({ data, width, height, color, target, C }) {
+function BarChart({ data, width, height, color, target, C, noDataLabel }) {
   if (!data || data.length === 0) {
     return (
       <View style={{ height, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: C.muted, fontSize: 12 }}>No data yet</Text>
+        <Text style={{ color: C.muted, fontSize: 12 }}>{noDataLabel || 'No data yet'}</Text>
       </View>
     );
   }
@@ -176,6 +177,7 @@ function BarChart({ data, width, height, color, target, C }) {
 
 export default function ProgressScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const s = makeStyles(C);
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState(null);
@@ -227,7 +229,7 @@ export default function ProgressScreen({ user, onNavigate }) {
   if (loading) {
     return (
       <SafeAreaView style={s.safe}>
-        <View style={s.titleBar}><Text style={s.titleBarText}>Progress</Text></View>
+        <View style={s.titleBar}><Text style={s.titleBarText}>{t('progress.title')}</Text></View>
         <View style={s.center}><ActivityIndicator color={C.green} size="large" /></View>
       </SafeAreaView>
     );
@@ -284,8 +286,8 @@ export default function ProgressScreen({ user, onNavigate }) {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
-        <Text style={s.titleBarText}>Progress</Text>
-        <Text style={s.titleBarSub}>Your trends, at a glance</Text>
+        <Text style={s.titleBarText}>{t('progress.title')}</Text>
+        <Text style={s.titleBarSub}>{t('progress.subtitle')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
@@ -293,7 +295,7 @@ export default function ProgressScreen({ user, onNavigate }) {
         {/* Goal progress */}
         <View style={s.goalCard}>
           <View style={s.goalHeader}>
-            <Text style={s.goalLabel}>GOAL PROGRESS</Text>
+            <Text style={s.goalLabel}>{t('progress.goal')}</Text>
             {weightDelta !== null && (
               <Text style={[s.goalDelta, weightDelta < 0 ? s.deltaDown : s.deltaUp]}>
                 {weightDelta > 0 ? '+' : ''}{weightDelta} kg
@@ -304,30 +306,30 @@ export default function ProgressScreen({ user, onNavigate }) {
           <View style={s.goalRow}>
             <View style={s.goalCol}>
               <Text style={s.goalNum}>{startWeight ? `${Math.round(startWeight)}` : '—'}</Text>
-              <Text style={s.goalSub}>Start kg</Text>
+              <Text style={s.goalSub}>{t('progress.start')}</Text>
             </View>
             <View style={s.goalArrow}><Text style={s.goalArrowText}>→</Text></View>
             <View style={s.goalCol}>
               <Text style={[s.goalNum, { color: C.green }]}>
                 {currentWeight ? `${Math.round(currentWeight * 10) / 10}` : '—'}
               </Text>
-              <Text style={s.goalSub}>Current kg</Text>
+              <Text style={s.goalSub}>{t('progress.current')}</Text>
             </View>
             <View style={s.goalArrow}><Text style={s.goalArrowText}>→</Text></View>
             <View style={s.goalCol}>
               <Text style={s.goalNum}>{targetWeight ? `${Math.round(targetWeight)}` : '—'}</Text>
-              <Text style={s.goalSub}>Target kg</Text>
+              <Text style={s.goalSub}>{t('progress.target')}</Text>
             </View>
           </View>
           {goalProgressPct !== null && (
             <View style={s.goalBarOuter}>
               <View style={[s.goalBarInner, { width: `${goalProgressPct}%` }]} />
-              <Text style={s.goalBarText}>{goalProgressPct}% to goal</Text>
+              <Text style={s.goalBarText}>{t('progress.toGoal', { n: goalProgressPct })}</Text>
             </View>
           )}
           {goalProgressPct === null && (
             <Text style={s.goalHint}>
-              {!startWeight ? 'Log a weight to track progress.' : 'Re-run onboarding to set a target weight.'}
+              {!startWeight ? t('progress.hintNoStart') : t('progress.hintNoTarget')}
             </Text>
           )}
         </View>
@@ -335,7 +337,7 @@ export default function ProgressScreen({ user, onNavigate }) {
         {/* Weight chart */}
         <View style={s.chartCard}>
           <View style={s.chartHeader}>
-            <Text style={s.chartTitle}>Weight</Text>
+            <Text style={s.chartTitle}>{t('progress.weight')}</Text>
             <View style={s.rangeRow}>
               {[7, 30, 90].map(r => (
                 <TouchableOpacity
@@ -357,10 +359,16 @@ export default function ProgressScreen({ user, onNavigate }) {
             target={targetWeight || undefined}
             C={C}
             yLabel="kg"
+            noDataLabel={t('progress.noData')}
           />
           <View style={s.chartFooter}>
             <Text style={s.chartFootText}>
-              {weightPoints.length} entries · {weightDelta !== null ? `${weightDelta > 0 ? '+' : ''}${weightDelta} kg over period` : 'log more to see trend'}
+              {t('progress.entriesLine', {
+                n: weightPoints.length,
+                trend: weightDelta !== null
+                  ? t('progress.kgOverPeriod', { delta: `${weightDelta > 0 ? '+' : ''}${weightDelta}` })
+                  : t('progress.logMore'),
+              })}
             </Text>
           </View>
         </View>
@@ -368,8 +376,8 @@ export default function ProgressScreen({ user, onNavigate }) {
         {/* Calories chart */}
         <View style={s.chartCard}>
           <View style={s.chartHeader}>
-            <Text style={s.chartTitle}>Daily Calories</Text>
-            <Text style={s.chartHeaderSub}>Last 14 days</Text>
+            <Text style={s.chartTitle}>{t('progress.dailyCals')}</Text>
+            <Text style={s.chartHeaderSub}>{t('progress.last14')}</Text>
           </View>
           <BarChart
             data={calBars}
@@ -378,12 +386,13 @@ export default function ProgressScreen({ user, onNavigate }) {
             color={C.green}
             target={calsTarget}
             C={C}
+            noDataLabel={t('progress.noData')}
           />
           <View style={s.chartFooter}>
             <Text style={s.chartFootText}>
-              7d avg: <Text style={{ color: C.green, fontWeight: '900' }}>{avgCal7 || '—'}</Text> kcal
-              {calsTarget ? <Text>  · target {calsTarget}</Text> : null}
-              {`  ·  ${loggedDays}/14 days logged`}
+              {t('health.sevenDayAvg')}: <Text style={{ color: C.green, fontWeight: '900' }}>{avgCal7 || '—'}</Text> {t('home.kcal')}
+              {calsTarget ? <Text>{t('progress.targetCals', { n: calsTarget })}</Text> : null}
+              {`  ·  ${t('progress.daysLogged', { n: loggedDays })}`}
             </Text>
           </View>
         </View>
@@ -393,28 +402,28 @@ export default function ProgressScreen({ user, onNavigate }) {
           <View style={s.macroBox}>
             <Text style={s.macroIcon}>🥩</Text>
             <Text style={s.macroNum}>{avgProt7}<Text style={s.macroUnit}>g</Text></Text>
-            <Text style={s.macroLabel}>Avg protein</Text>
-            {plan?.protein ? <Text style={s.macroTarget}>target {plan.protein}g</Text> : null}
+            <Text style={s.macroLabel}>{t('progress.avgProtein')}</Text>
+            {plan?.protein ? <Text style={s.macroTarget}>{t('progress.targetGrams', { n: plan.protein })}</Text> : null}
           </View>
           <View style={s.macroBox}>
             <Text style={s.macroIcon}>🍞</Text>
             <Text style={s.macroNum}>{avgCarbs7}<Text style={s.macroUnit}>g</Text></Text>
-            <Text style={s.macroLabel}>Avg carbs</Text>
-            {plan?.carbs ? <Text style={s.macroTarget}>target {plan.carbs}g</Text> : null}
+            <Text style={s.macroLabel}>{t('progress.avgCarbs')}</Text>
+            {plan?.carbs ? <Text style={s.macroTarget}>{t('progress.targetGrams', { n: plan.carbs })}</Text> : null}
           </View>
           <View style={s.macroBox}>
             <Text style={s.macroIcon}>🥑</Text>
             <Text style={s.macroNum}>{avgFat7}<Text style={s.macroUnit}>g</Text></Text>
-            <Text style={s.macroLabel}>Avg fat</Text>
-            {plan?.fat ? <Text style={s.macroTarget}>target {plan.fat}g</Text> : null}
+            <Text style={s.macroLabel}>{t('progress.avgFat')}</Text>
+            {plan?.fat ? <Text style={s.macroTarget}>{t('progress.targetGrams', { n: plan.fat })}</Text> : null}
           </View>
         </View>
 
         {/* Protein chart */}
         <View style={s.chartCard}>
           <View style={s.chartHeader}>
-            <Text style={s.chartTitle}>Daily Protein</Text>
-            <Text style={s.chartHeaderSub}>Last 14 days</Text>
+            <Text style={s.chartTitle}>{t('progress.dailyProtein')}</Text>
+            <Text style={s.chartHeaderSub}>{t('progress.last14')}</Text>
           </View>
           <BarChart
             data={proteinBars}
@@ -423,34 +432,35 @@ export default function ProgressScreen({ user, onNavigate }) {
             color={C.green}
             target={plan?.protein || null}
             C={C}
+            noDataLabel={t('progress.noData')}
           />
         </View>
 
         {/* Adherence */}
         {ctx && (
           <View style={s.adhCard}>
-            <Text style={s.chartTitle}>Workout Adherence</Text>
+            <Text style={s.chartTitle}>{t('progress.adherence')}</Text>
             <View style={s.adhRow}>
               <View style={s.adhBig}>
                 <Text style={s.adhPct}>
                   {ctx.workout.adherencePct !== null ? `${ctx.workout.adherencePct}%` : '—'}
                 </Text>
-                <Text style={s.adhPctLabel}>Last 7 days</Text>
+                <Text style={s.adhPctLabel}>{t('progress.last7')}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <View style={s.adhStat}>
                   <View style={[s.adhDot, { backgroundColor: C.green }]} />
-                  <Text style={s.adhStatLabel}>Completed</Text>
+                  <Text style={s.adhStatLabel}>{t('progress.completed')}</Text>
                   <Text style={s.adhStatVal}>{ctx.workout.sessionsCompletedLast7d}</Text>
                 </View>
                 <View style={s.adhStat}>
                   <View style={[s.adhDot, { backgroundColor: C.muted }]} />
-                  <Text style={s.adhStatLabel}>Skipped</Text>
+                  <Text style={s.adhStatLabel}>{t('progress.skipped')}</Text>
                   <Text style={s.adhStatVal}>{ctx.workout.sessionsSkippedLast7d}</Text>
                 </View>
                 <View style={s.adhStat}>
                   <View style={[s.adhDot, { backgroundColor: C.border }]} />
-                  <Text style={s.adhStatLabel}>Planned</Text>
+                  <Text style={s.adhStatLabel}>{t('progress.planned')}</Text>
                   <Text style={s.adhStatVal}>{ctx.workout.sessionsPlannedPerWeek}</Text>
                 </View>
               </View>
@@ -463,7 +473,7 @@ export default function ProgressScreen({ user, onNavigate }) {
           onPress={() => onNavigate('measurements')}
           activeOpacity={0.85}
         >
-          <Text style={[s.backBtnText, { color: C.bg, fontWeight: '900' }]}>📏 Body Measurements & Photos →</Text>
+          <Text style={[s.backBtnText, { color: C.bg, fontWeight: '900' }]}>{t('progress.measurements')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -471,11 +481,11 @@ export default function ProgressScreen({ user, onNavigate }) {
           onPress={() => onNavigate('weeklyreview')}
           activeOpacity={0.85}
         >
-          <Text style={[s.backBtnText, { color: C.green, fontWeight: '900' }]}>🧠 Weekly Coach Review →</Text>
+          <Text style={[s.backBtnText, { color: C.green, fontWeight: '900' }]}>{t('progress.weeklyReview')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={s.backBtn} onPress={() => onNavigate('home')} activeOpacity={0.85}>
-          <Text style={s.backBtnText}>← Back to Home</Text>
+          <Text style={s.backBtnText}>{t('progress.backHome')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

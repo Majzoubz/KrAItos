@@ -4,6 +4,7 @@ import {
   SafeAreaView, ScrollView, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 import { callAI, parseJSON } from '../utils/api';
 
@@ -26,6 +27,7 @@ const CHAINS = [
 
 export default function RestaurantScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { isRTL } = useI18n();
   const s = makeStyles(C);
   const [plan, setPlan] = useState(null);
   const [foodLog, setFoodLog] = useState([]);
@@ -120,7 +122,7 @@ export default function RestaurantScreen({ user, onNavigate }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <TouchableOpacity onPress={() => onNavigate('foodlog')} style={s.backBtn}>
-          <Text style={s.backText}>‹ Back</Text>
+          <Text style={s.backText}>{isRTL ? '› Back' : '‹ Back'}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.titleBarText}>Restaurant mode</Text>

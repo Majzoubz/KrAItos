@@ -4,6 +4,7 @@ import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Image, Pla
 
 import { Auth } from './utils/auth';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
+import { I18nProvider } from './i18n/I18nContext';
 import { isWideWeb } from './utils/platform';
 import { Storage, KEYS, initStorage } from './utils/storage';
 import WelcomeScreen       from './screens/WelcomeScreen';
@@ -182,7 +183,7 @@ function App() {
     return (
       <WebLayout current={screen} onNavigate={navigate} user={user}>
         <ScreenTransition screenKey={screen}>{renderScreen()}</ScreenTransition>
-        {screen !== 'coach' && <FloatingChatbot user={user} />}
+        {screen !== 'coach' && <FloatingChatbot user={user} onNavigate={navigate} />}
       </WebLayout>
     );
   }
@@ -193,7 +194,7 @@ function App() {
         <ScreenTransition screenKey={screen}>{renderScreen()}</ScreenTransition>
       </View>
       {isAuthed && <BottomNav current={screen} onNavigate={navigate} />}
-      {isAuthed && screen !== 'coach' && <FloatingChatbot user={user} />}
+      {isAuthed && screen !== 'coach' && <FloatingChatbot user={user} onNavigate={navigate} />}
     </View>
   );
 }
@@ -221,7 +222,9 @@ const makeStyles = (C) => StyleSheet.create({
 function Root() {
   return (
     <ThemeProvider>
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </ThemeProvider>
   );
 }

@@ -4,6 +4,7 @@ import {
   SafeAreaView, ScrollView, Alert, ActivityIndicator, Animated, Easing, Platform,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 import {
   buildInitialDraft, loadActive, saveActive, clearActive, saveSession,
@@ -15,6 +16,7 @@ const TODAY_NAME = () => new Date().toLocaleDateString('en-US', { weekday: 'long
 
 export default function WorkoutSessionScreen({ user, params, onNavigate }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const s = makeStyles(C);
   const uid = user.email || user.uid;
 
@@ -187,7 +189,7 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
     if (!draft) return;
     const stats = totalVolume(draft);
     if (stats.setsDone === 0) {
-      Alert.alert('No sets logged', 'Tick at least one set before finishing, or quit without saving.');
+      Alert.alert(t('workout.alert.noSetsTitle'), t('workout.alert.noSetsMsg'));
       return;
     }
     const session = {
@@ -209,16 +211,20 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
       });
     } catch {}
     Alert.alert(
-      'Workout saved 💪',
-      `${stats.setsDone} sets · ${stats.volume.toLocaleString()} kg total volume\nDuration: ${Math.round(session.durationMs / 60000)} min`,
-      [{ text: 'Done', onPress: () => onNavigate('plan') }]
+      t('workout.alert.savedTitle'),
+      t('workout.alert.savedMsg', {
+        sets: stats.setsDone,
+        volume: stats.volume.toLocaleString(),
+        min: Math.round(session.durationMs / 60000),
+      }),
+      [{ text: t('workout.done'), onPress: () => onNavigate('plan') }]
     );
   };
 
   const quitWorkout = () => {
-    Alert.alert('Quit workout?', 'Your in-progress sets will be discarded.', [
-      { text: 'Keep going', style: 'cancel' },
-      { text: 'Quit', style: 'destructive', onPress: async () => {
+    Alert.alert(t('workout.alert.quitTitle'), t('workout.alert.quitMsg'), [
+      { text: t('workout.alert.keepGoing'), style: 'cancel' },
+      { text: t('workout.alert.quit'), style: 'destructive', onPress: async () => {
         await clearActive(uid);
         onNavigate('plan');
       }},
@@ -240,10 +246,10 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
     return (
       <SafeAreaView style={s.root}>
         <View style={s.center}>
-          <Text style={s.emptyTitle}>No workout to log</Text>
-          <Text style={s.emptySub}>Generate a training plan first.</Text>
+          <Text style={s.emptyTitle}>{t('workout.empty.title')}</Text>
+          <Text style={s.emptySub}>{t('workout.empty.sub')}</Text>
           <TouchableOpacity style={s.primaryBtn} onPress={() => onNavigate('plan')}>
-            <Text style={s.primaryBtnText}>Back to Plan</Text>
+            <Text style={s.primaryBtnText}>{t('workout.empty.back')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -262,8 +268,8 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
           <Text style={s.headerSub}>{draft.type}{draft.focus ? ' · ' + draft.focus : ''}</Text>
         </View>
         <View style={s.statsPill}>
-          <Text style={s.statsPillNum}>{elapsedMin}m</Text>
-          <Text style={s.statsPillLabel}>{stats.setsDone} sets</Text>
+          <Text style={s.statsPillNum}>{t('workout.elapsedMin', { min: elapsedMin })}</Text>
+          <Text style={s.statsPillLabel}>{t('workout.setsCount', { count: stats.setsDone })}</Text>
         </View>
       </View>
 
@@ -271,7 +277,7 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
       {restRemaining > 0 && (
         <View style={s.restBar}>
           <View style={s.restBarLeft}>
-            <Text style={s.restLabel}>RESTING</Text>
+            <Text style={s.restLabel}>{t('workout.resting')}</Text>
             <Text style={s.restTime}>{Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, '0')}</Text>
           </View>
           <View style={s.restBarTrack}>
@@ -282,7 +288,7 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
           <View style={s.restBarRight}>
             <TouchableOpacity style={s.restBtn} onPress={() => adjustRest(-15)}><Text style={s.restBtnText}>-15</Text></TouchableOpacity>
             <TouchableOpacity style={s.restBtn} onPress={() => adjustRest(15)}><Text style={s.restBtnText}>+15</Text></TouchableOpacity>
-            <TouchableOpacity style={[s.restBtn, s.restBtnSkip]} onPress={skipRest}><Text style={s.restBtnText}>Skip</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.restBtn, s.restBtnSkip]} onPress={skipRest}><Text style={s.restBtnText}>{t('workout.skip')}</Text></TouchableOpacity>
           </View>
         </View>
       )}
@@ -302,13 +308,13 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
                 <View style={{ flex: 1 }}>
                   <Text style={s.exName}>{ex.name}</Text>
                   <Text style={s.exTarget}>
-                    Target: {ex.targetSets} × {ex.targetReps || '?'}
+                    {t('workout.target')} {ex.targetSets} × {ex.targetReps || '?'}
                     {ex.targetRpe ? ' @ ' + ex.targetRpe : ''}
-                    {ex.rest ? ' · rest ' + ex.rest : ''}
+                    {ex.rest ? ' · ' + t('workout.rest') + ' ' + ex.rest : ''}
                   </Text>
                   {last && (
                     <Text style={s.lastTime}>
-                      Last time ({last.date}): {last.sets.map(st => `${st.weight || '-'}×${st.reps || '-'}`).join(', ')}
+                      {t('workout.lastTime', { date: last.date })}: {last.sets.map(st => `${st.weight || '-'}×${st.reps || '-'}`).join(', ')}
                     </Text>
                   )}
                 </View>
@@ -322,11 +328,11 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
               {!collapsed && (
                 <View style={s.setsTable}>
                   <View style={s.setHeaderRow}>
-                    <Text style={[s.setHeaderCell, { flex: 0.6 }]}>SET</Text>
-                    <Text style={[s.setHeaderCell, { flex: 1.2 }]}>PREV</Text>
-                    <Text style={[s.setHeaderCell, { flex: 1 }]}>KG</Text>
-                    <Text style={[s.setHeaderCell, { flex: 1 }]}>REPS</Text>
-                    <Text style={[s.setHeaderCell, { flex: 0.9 }]}>RPE</Text>
+                    <Text style={[s.setHeaderCell, { flex: 0.6 }]}>{t('workout.col.set')}</Text>
+                    <Text style={[s.setHeaderCell, { flex: 1.2 }]}>{t('workout.col.prev')}</Text>
+                    <Text style={[s.setHeaderCell, { flex: 1 }]}>{t('workout.col.kg')}</Text>
+                    <Text style={[s.setHeaderCell, { flex: 1 }]}>{t('workout.col.reps')}</Text>
+                    <Text style={[s.setHeaderCell, { flex: 0.9 }]}>{t('workout.col.rpe')}</Text>
                     <Text style={[s.setHeaderCell, { flex: 0.7, textAlign: 'right' }]}>✓</Text>
                   </View>
                   {ex.sets.map((st, setIdx) => {
@@ -378,7 +384,7 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
                     );
                   })}
                   <TouchableOpacity style={s.addSetBtn} onPress={() => addSet(exIdx)}>
-                    <Text style={s.addSetBtnText}>+ Add Set</Text>
+                    <Text style={s.addSetBtnText}>{t('workout.addSet')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -387,12 +393,12 @@ export default function WorkoutSessionScreen({ user, params, onNavigate }) {
         })}
 
         <TouchableOpacity style={s.finishBtn} onPress={finishWorkout} activeOpacity={0.85}>
-          <Text style={s.finishBtnText}>FINISH WORKOUT</Text>
-          <Text style={s.finishBtnSub}>{stats.setsDone} sets · {stats.volume.toLocaleString()} kg total</Text>
+          <Text style={s.finishBtnText}>{t('workout.finish')}</Text>
+          <Text style={s.finishBtnSub}>{t('workout.finishSummary', { sets: stats.setsDone, volume: stats.volume.toLocaleString() })}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={s.quitLink} onPress={quitWorkout}>
-          <Text style={s.quitLinkText}>Quit without saving</Text>
+          <Text style={s.quitLinkText}>{t('workout.quitLink')}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 60 }} />

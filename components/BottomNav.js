@@ -1,18 +1,22 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useT, useI18n } from '../i18n/I18nContext';
 import { select as hSelect } from '../utils/haptics';
-const TABS = [
-  { screen: 'home',    label: 'Home',      icon: '🏠' },
-  { screen: 'plan',    label: 'Training',  icon: '🏋️' },
-  { screen: 'scanner', label: 'AI Scan',   icon: '📷', center: true },
-  { screen: 'foodlog', label: 'Nutrition', icon: '🍴' },
-  { screen: 'profile', label: 'Profile',   icon: '👤' },
+const TAB_DEFS = [
+  { screen: 'home',    key: 'nav.home',      icon: '🏠' },
+  { screen: 'plan',    key: 'nav.training',  icon: '🏋️' },
+  { screen: 'scanner', key: 'nav.scan',      icon: '📷', center: true },
+  { screen: 'foodlog', key: 'nav.nutrition', icon: '🍴' },
+  { screen: 'profile', key: 'nav.profile',   icon: '👤' },
 ];
 
 export default function BottomNav({ current, onNavigate }) {
   const { C } = useTheme();
-  const s = makeStyles(C);
+  const t = useT();
+  const { isRTL } = useI18n();
+  const s = makeStyles(C, isRTL);
+  const TABS = TAB_DEFS.map(td => ({ ...td, label: t(td.key) }));
   return (
     <SafeAreaView style={s.safeArea}>
       <View style={s.bar}>
@@ -37,9 +41,9 @@ export default function BottomNav({ current, onNavigate }) {
   );
 }
 
-const makeStyles = (C) => StyleSheet.create({
+const makeStyles = (C, isRTL = false) => StyleSheet.create({
   safeArea: { backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.border },
-  bar: { flexDirection: 'row', paddingTop: 8, paddingBottom: 6 },
+  bar: { flexDirection: isRTL ? 'row-reverse' : 'row', paddingTop: 8, paddingBottom: 6 },
   tab: { flex: 1, alignItems: 'center', paddingBottom: 4 },
   iconBox: { width: 44, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 3 },
   iconBoxActive: { backgroundColor: C.greenGlow },

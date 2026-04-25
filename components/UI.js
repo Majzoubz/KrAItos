@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 
 export function LoadingState({ message, compact }) {
   const { C } = useTheme();
@@ -86,7 +87,11 @@ export function ErrorState({ title = 'Something went wrong', body, onRetry, retr
 
 export function OfflineBanner({ queued }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   if (!queued) return null;
+  const msg = queued === 1
+    ? t('sync.offlineWaitingOne')
+    : t('sync.offlineWaiting', { count: queued });
   return (
     <View style={{
       flexDirection: 'row', alignItems: 'center',
@@ -95,7 +100,7 @@ export function OfflineBanner({ queued }) {
     }}>
       <Text style={{ fontSize: 14, marginRight: 8 }}>⏳</Text>
       <Text style={{ color: C.white, fontSize: 12, fontWeight: '700', flex: 1 }}>
-        Offline — {queued} change{queued === 1 ? '' : 's'} waiting to sync.
+        {msg}
       </Text>
     </View>
   );

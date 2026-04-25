@@ -23,6 +23,7 @@ import TodayScoreCard from '../components/TodayScoreCard';
 import QuickLogSheet from '../components/QuickLogSheet';
 import { getLatestReview, isReviewDue } from '../utils/weeklyReview';
 import BrandName from '../components/BrandName';
+import { useI18n } from '../i18n/I18nContext';
 
 const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
@@ -83,6 +84,7 @@ function DateStrip({ selectedIdx, onSelect, today }) {
 
 export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
   const { C } = useTheme();
+  const { t } = useI18n();
   const s = makeStyles(C);
   const [plan, setPlan]               = useState(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
@@ -242,13 +244,13 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
               <View style={s.heroCard}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.heroNum}>{remaining}</Text>
-                  <Text style={s.heroLabel}>Calories left</Text>
+                  <Text style={s.heroLabel}>{t('home.calsLeft')}</Text>
                   <View style={s.heroSubRow}>
                     <Text style={s.heroSubText}>
                       <Text style={{ color: C.white, fontWeight: '700' }}>{consumed}</Text>
-                      <Text style={{ color: C.muted }}> eaten · </Text>
+                      <Text style={{ color: C.muted }}>{t('home.eaten')}</Text>
                       <Text style={{ color: C.white, fontWeight: '700' }}>{target}</Text>
-                      <Text style={{ color: C.muted }}> goal</Text>
+                      <Text style={{ color: C.muted }}>{t('home.goal')}</Text>
                     </Text>
                   </View>
                 </View>
@@ -260,21 +262,21 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
               <View style={s.macroRow}>
                 <View style={s.macroCard}>
                   <Text style={s.macroNum}>{proteinLeft}g</Text>
-                  <Text style={s.macroLabel}>Protein left</Text>
+                  <Text style={s.macroLabel}>{t('home.proteinLeft')}</Text>
                   <Ring size={48} stroke={5} pct={proteinTarget > 0 ? proteinConsumed / proteinTarget : 0} color={C.green}>
                     <Text style={s.macroIcon}>🥩</Text>
                   </Ring>
                 </View>
                 <View style={s.macroCard}>
                   <Text style={s.macroNum}>{carbsLeft}g</Text>
-                  <Text style={s.macroLabel}>Carbs left</Text>
+                  <Text style={s.macroLabel}>{t('home.carbsLeft')}</Text>
                   <Ring size={48} stroke={5} pct={carbsTarget > 0 ? carbsConsumed / carbsTarget : 0} color={C.green}>
                     <Text style={s.macroIcon}>🍞</Text>
                   </Ring>
                 </View>
                 <View style={s.macroCard}>
                   <Text style={s.macroNum}>{fatLeft}g</Text>
-                  <Text style={s.macroLabel}>Fats left</Text>
+                  <Text style={s.macroLabel}>{t('home.fatsLeft')}</Text>
                   <Ring size={48} stroke={5} pct={fatTarget > 0 ? fatConsumed / fatTarget : 0} color={C.green}>
                     <Text style={s.macroIcon}>🥑</Text>
                   </Ring>
@@ -312,8 +314,8 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
             >
               <View style={s.coachIconWrap}><Text style={{ fontSize: 22 }}>💬</Text></View>
               <View style={{ flex: 1 }}>
-                <Text style={s.coachTitle}>Ask your coach</Text>
-                <Text style={s.coachSub}>"What should I eat with {Math.max(target - consumed, 0)} cals left?"</Text>
+                <Text style={s.coachTitle}>{t('home.askCoach')}</Text>
+                <Text style={s.coachSub}>{t('home.askCoachExample', { cals: Math.max(target - consumed, 0) })}</Text>
               </View>
               <Text style={s.coachArrow}>→</Text>
             </TouchableOpacity>
@@ -343,10 +345,10 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
               <View style={s.reviewIconWrap}><Text style={s.reviewIcon}>🧠</Text></View>
               <View style={{ flex: 1 }}>
                 <Text style={s.reviewTitle}>
-                  {latestReview && !latestReview.seen ? 'New weekly coach review' : (latestReview ? 'Weekly coach review' : 'Your week is ready to review')}
+                  {latestReview && !latestReview.seen ? t('home.reviewNew') : (latestReview ? t('home.review') : t('home.reviewReady'))}
                 </Text>
                 <Text style={s.reviewSub} numberOfLines={1}>
-                  {latestReview?.title || 'Get a personalized recap and adjustments for next week'}
+                  {latestReview?.title || t('home.reviewSub')}
                 </Text>
               </View>
               <Text style={s.reviewArrow}>→</Text>
@@ -356,7 +358,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
           {loadingPlan ? (
             <View style={s.loadingWrap}>
               <ActivityIndicator color={C.green} size="large" />
-              <Text style={s.loadingLabel}>Loading your plan...</Text>
+              <Text style={s.loadingLabel}>{t('home.loadingPlan')}</Text>
             </View>
           ) : !plan ? (
             <View style={s.emptyState}>
@@ -364,29 +366,29 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
               {generating ? (
                 <>
                   <ActivityIndicator color={C.green} size="large" style={{ marginBottom: 18 }} />
-                  <Text style={s.emptyTitle}>Building your plan</Text>
+                  <Text style={s.emptyTitle}>{t('home.buildingTitle')}</Text>
                   <Text style={s.emptyDesc}>
-                    We're crafting your personalized nutrition and workout plan from your sign-up details. This takes about 20 seconds.
+                    {t('home.buildingDesc')}
                   </Text>
                 </>
               ) : genError === 'missing' ? (
                 <>
-                  <Text style={s.emptyTitle}>Tell us about you</Text>
+                  <Text style={s.emptyTitle}>{t('home.tellTitle')}</Text>
                   <Text style={s.emptyDesc}>
-                    We need a few details to build your personalized plan. It only takes a minute.
+                    {t('home.tellDesc')}
                   </Text>
                   <TouchableOpacity style={s.emptyBtn} onPress={() => onNavigate('onboarding')}>
-                    <Text style={s.emptyBtnText}>Get Started</Text>
+                    <Text style={s.emptyBtnText}>{t('home.getStarted')}</Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <Text style={s.emptyTitle}>Plan generation failed</Text>
+                  <Text style={s.emptyTitle}>{t('home.failTitle')}</Text>
                   <Text style={s.emptyDesc}>
-                    We couldn't reach the AI right now. Check your connection and try again.
+                    {t('home.failDesc')}
                   </Text>
                   <TouchableOpacity style={s.emptyBtn} onPress={tryAutoGenerate}>
-                    <Text style={s.emptyBtnText}>Try Again</Text>
+                    <Text style={s.emptyBtnText}>{t('home.tryAgain')}</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -404,12 +406,12 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.healthTitle}>
-                    {healthToday?.steps != null ? healthToday.steps.toLocaleString() : '—'} steps
+                    {t('home.steps', { n: healthToday?.steps != null ? healthToday.steps.toLocaleString() : '—' })}
                   </Text>
                   <Text style={s.healthSub}>
-                    {healthToday?.restingHr ? `${healthToday.restingHr} bpm resting · ` : ''}
-                    {healthToday?.sleepHr ? `${healthToday.sleepHr}h sleep · ` : ''}
-                    Tap to sync watch & health
+                    {healthToday?.restingHr ? t('home.restingBpm', { n: healthToday.restingHr }) : ''}
+                    {healthToday?.sleepHr ? t('home.sleepHr', { n: healthToday.sleepHr }) : ''}
+                    {t('home.tapSync')}
                   </Text>
                 </View>
                 <Text style={s.progressArrow}>→</Text>
@@ -417,17 +419,17 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
 
               {/* Recently logged */}
               <View style={s.sectionHeader}>
-                <Text style={s.sectionTitle}>Recently logged</Text>
+                <Text style={s.sectionTitle}>{t('home.recentLogged')}</Text>
                 <TouchableOpacity onPress={() => onNavigate('foodlog')}>
-                  <Text style={s.sectionLink}>See all</Text>
+                  <Text style={s.sectionLink}>{t('home.seeAll')}</Text>
                 </TouchableOpacity>
               </View>
 
               {recent.length === 0 ? (
                 <View style={s.emptyLog}>
                   <Text style={s.emptyLogIcon}>🍽️</Text>
-                  <Text style={s.emptyLogTitle}>Nothing logged yet</Text>
-                  <Text style={s.emptyLogText}>Snap a photo or add food to get started.</Text>
+                  <Text style={s.emptyLogTitle}>{t('home.emptyLogTitle')}</Text>
+                  <Text style={s.emptyLogText}>{t('home.emptyLogText')}</Text>
                 </View>
               ) : (
                 recent.map((item, i) => (
@@ -443,7 +445,7 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
                     </View>
                     <View style={s.foodRight}>
                       <Text style={s.foodCal}>{Math.round(item.calories || 0)}</Text>
-                      <Text style={s.foodCalLabel}>kcal</Text>
+                      <Text style={s.foodCalLabel}>{t('home.kcal')}</Text>
                     </View>
                   </View>
                 ))
@@ -452,11 +454,11 @@ export default function HomeScreen({ user, onNavigate, onUserUpdate }) {
               <View style={s.addRow}>
                 <TouchableOpacity style={[s.addBtn, { flex: 1 }]} onPress={() => onNavigate('scanner')} activeOpacity={0.85}>
                   <Text style={s.addBtnIcon}>+</Text>
-                  <Text style={s.addBtnText}>Add food</Text>
+                  <Text style={s.addBtnText}>{t('home.addFood')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.quickBtn} onPress={() => setQuickLogOpen(true)} activeOpacity={0.85}>
                   <Text style={s.quickBtnIcon}>⚡</Text>
-                  <Text style={s.quickBtnText}>Quick Log</Text>
+                  <Text style={s.quickBtnText}>{t('home.quickLog')}</Text>
                 </TouchableOpacity>
               </View>
             </>

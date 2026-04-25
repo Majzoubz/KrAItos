@@ -4,22 +4,23 @@ import {
   SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 import { callAI } from '../utils/api';
 
 const TODAY = new Date().toDateString();
 const CHAT_KEY = (uid) => 'coachchat_' + (uid || 'anon');
 
-const SUGGESTIONS = [
-  'Why didn\'t I lose weight this week?',
-  'What should I eat tonight with my remaining calories?',
-  'How do I hit my protein goal more easily?',
-  'Should I deload my training next week?',
-];
-
 export default function CoachChatScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { t, isRTL } = useI18n();
   const s = makeStyles(C);
+  const SUGGESTIONS = [
+    t('coach.suggestion1'),
+    t('coach.suggestion2'),
+    t('coach.suggestion3'),
+    t('coach.suggestion4'),
+  ];
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
@@ -39,10 +40,10 @@ export default function CoachChatScreen({ user, onNavigate }) {
     } else {
       setMessages([{
         role: 'assistant',
-        text: `Hi ${user.fullName?.split(' ')[0] || 'there'} 👋 I'm your KrAItos coach. I know your plan, your week, and what you've eaten today. Ask me anything.`,
+        text: t('coach.welcome', { name: user.fullName?.split(' ')[0] || t('coach.thereDefault') }),
       }]);
     }
-  }, [uid, user.uid, user.fullName]);
+  }, [uid, user.uid, user.fullName, t]);
 
   useEffect(() => { loadCtx(); }, [loadCtx]);
 
@@ -96,9 +97,9 @@ export default function CoachChatScreen({ user, onNavigate }) {
         (m.role === 'user' ? 'USER: ' : 'COACH: ') + m.text
       ).join('\n');
       const reply = await callAI(buildSystem(), history + '\nCOACH:');
-      setMessages([...next, { role: 'assistant', text: reply.trim() || 'Sorry, I didn\'t catch that. Try again?' }]);
+      setMessages([...next, { role: 'assistant', text: reply.trim() || t('coach.replyFallback') }]);
     } catch (e) {
-      setMessages([...next, { role: 'assistant', text: 'I couldn\'t reach the AI. Check your connection and try again.' }]);
+      setMessages([...next, { role: 'assistant', text: t('coach.errorReach') }]);
     } finally {
       setThinking(false);
     }
@@ -107,7 +108,7 @@ export default function CoachChatScreen({ user, onNavigate }) {
   const clearChat = async () => {
     setMessages([{
       role: 'assistant',
-      text: 'Cleared. What\'s on your mind?',
+      text: t('coach.cleared'),
     }]);
     try { await Storage.remove(CHAT_KEY(uid)); } catch {}
   };
@@ -116,14 +117,14 @@ export default function CoachChatScreen({ user, onNavigate }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <TouchableOpacity onPress={() => onNavigate('home')} style={s.backBtn}>
-          <Text style={s.backText}>‹ Back</Text>
+          <Text style={s.backText}>{t('coach.back')}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={s.titleBarText}>Coach</Text>
-          <Text style={s.titleBarSub}>Personal AI · knows your plan</Text>
+          <Text style={s.titleBarText}>{t('coach.title')}</Text>
+          <Text style={s.titleBarSub}>{t('coach.subtitle')}</Text>
         </View>
         <TouchableOpacity onPress={clearChat} style={s.clearBtn}>
-          <Text style={s.clearText}>Clear</Text>
+          <Text style={s.clearText}>{t('coach.clear')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -153,14 +154,14 @@ export default function CoachChatScreen({ user, onNavigate }) {
               <View style={s.aiAvatar}><Text style={s.aiAvatarText}>K</Text></View>
               <View style={[s.bubble, s.bubbleAi, { flexDirection: 'row', alignItems: 'center' }]}>
                 <ActivityIndicator color={C.green} size="small" />
-                <Text style={[s.bubbleText, { marginLeft: 8 }]}>Thinking…</Text>
+                <Text style={[s.bubbleText, { marginLeft: 8 }]}>{t('coach.thinking')}</Text>
               </View>
             </View>
           )}
 
           {messages.length <= 1 && !thinking && (
             <View style={s.suggestionsWrap}>
-              <Text style={s.suggestionsLabel}>Try asking</Text>
+              <Text style={s.suggestionsLabel}>{t('coach.tryAsking')}</Text>
               {SUGGESTIONS.map((q, i) => (
                 <TouchableOpacity key={i} style={s.suggestionChip} onPress={() => send(q)} activeOpacity={0.8}>
                   <Text style={s.suggestionText}>{q}</Text>
@@ -173,7 +174,7 @@ export default function CoachChatScreen({ user, onNavigate }) {
         <View style={s.inputBar}>
           <TextInput
             style={s.input}
-            placeholder="Ask your coach…"
+            placeholder={t('coach.inputPlaceholder')}
             placeholderTextColor={C.muted}
             value={input}
             onChangeText={setInput}

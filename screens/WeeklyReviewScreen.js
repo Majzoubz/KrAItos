@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { Storage, KEYS } from '../utils/storage';
 import { getLatestReview, generateWeeklyReview, markReviewSeen } from '../utils/weeklyReview';
 import { adaptPlan } from '../utils/planGenerator';
@@ -14,6 +15,7 @@ const ONBOARDING_DATA_KEY = 'greengain_onboarding_data';
 
 export default function WeeklyReviewScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const { isRTL } = useI18n();
   const s = makeStyles(C);
   // FOODLOG/ADHERENCE writers use raw user.uid, so reads must match.
   const uid = user.uid;
@@ -85,7 +87,7 @@ export default function WeeklyReviewScreen({ user, onNavigate }) {
   if (loading) {
     return (
       <SafeAreaView style={s.root}>
-        <Header s={s} C={C} onNavigate={onNavigate} />
+        <Header s={s} C={C} onNavigate={onNavigate} isRTL={isRTL} />
         <View style={s.center}><ActivityIndicator color={C.green} /></View>
       </SafeAreaView>
     );
@@ -93,7 +95,7 @@ export default function WeeklyReviewScreen({ user, onNavigate }) {
 
   return (
     <SafeAreaView style={s.root}>
-      <Header s={s} C={C} onNavigate={onNavigate} />
+      <Header s={s} C={C} onNavigate={onNavigate} isRTL={isRTL} />
       <ScrollView contentContainerStyle={s.scroll}>
         {!review ? (
           <View style={s.emptyCard}>
@@ -116,7 +118,7 @@ export default function WeeklyReviewScreen({ user, onNavigate }) {
 
             <Section title="Wins this week" items={review.wins} bullet="✓" color={C.green} s={s} C={C} />
             <Section title="What slipped" items={review.misses} bullet="!" color={C.orange || '#F2A641'} s={s} C={C} />
-            <Section title="Adjustments for next week" items={review.adjustments} bullet="→" color={C.green} s={s} C={C} />
+            <Section title="Adjustments for next week" items={review.adjustments} bullet={isRTL ? '←' : '→'} color={C.green} s={s} C={C} />
 
             {review.nextFocus && (
               <View style={s.focusCard}>
@@ -142,11 +144,11 @@ export default function WeeklyReviewScreen({ user, onNavigate }) {
   );
 }
 
-function Header({ s, C, onNavigate }) {
+function Header({ s, C, onNavigate, isRTL }) {
   return (
     <View style={s.header}>
       <TouchableOpacity onPress={() => onNavigate('home')} style={s.backBtn}>
-        <Text style={s.backBtnText}>‹</Text>
+        <Text style={s.backBtnText}>{isRTL ? '›' : '‹'}</Text>
       </TouchableOpacity>
       <Text style={s.headerTitle}>Weekly Coach Review</Text>
       <View style={{ width: 36 }} />

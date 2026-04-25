@@ -5,11 +5,13 @@ import {
   Alert, ActivityIndicator, Animated, Image,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useT } from '../i18n/I18nContext';
 import { Auth } from '../utils/auth';
 import BrandName from '../components/BrandName';
 
 export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
   const { C } = useTheme();
+  const t = useT();
   const s = makeStyles(C);
   const [mode, setMode]             = useState(initialMode);
   const [fullName, setFullName]     = useState('');
@@ -21,11 +23,19 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
   const [loading, setLoading]       = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const logoTranslateY = useRef(new Animated.Value(-40)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+      Animated.timing(logoTranslateY, { toValue: 0, duration: 320, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, tension: 80, friction: 9, useNativeDriver: true }),
+      Animated.timing(logoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, delay: 120, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, delay: 120, useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -71,50 +81,55 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
             <View style={s.topSection}>
-              <Image source={require('../assets/logo.png')} style={s.logoImage} resizeMode="contain" />
+              <Animated.Image
+                source={require('../assets/logo.png')}
+                style={[s.logoImage, { opacity: logoOpacity, transform: [{ translateY: logoTranslateY }, { scale: logoScale }] }]}
+                resizeMode="contain"
+              />
               <Text style={s.heading}>
-                {mode === 'signup' ? 'Create your account' : 'Welcome back'}
+                {mode === 'signup' ? t('auth.signupTitle') : t('auth.loginTitle')}
               </Text>
               <Text style={s.subheading}>
-                {mode === 'signup' ? (
-                  <>Join <BrandName /> to start your transformation</>
-                ) : 'Log in to continue your journey'}
+                {mode === 'signup' ? (() => {
+                  const parts = t('welcome.join').split('{brand}');
+                  return <>{parts[0]}<BrandName />{parts[1] || ''}</>;
+                })() : t('auth.loginSub')}
               </Text>
             </View>
 
             {mode === 'signup' && (
               <View style={s.fieldGroup}>
-                <Text style={s.label}>FULL NAME</Text>
-                <TextInput style={s.input} placeholder="Your name" placeholderTextColor={C.muted}
+                <Text style={s.label}>{t('auth.fullName')}</Text>
+                <TextInput style={s.input} placeholder={t('auth.fullNamePh')} placeholderTextColor={C.muted}
                   value={fullName} onChangeText={setFullName} autoCapitalize="words" />
               </View>
             )}
 
             <View style={s.fieldGroup}>
-              <Text style={s.label}>EMAIL</Text>
-              <TextInput style={s.input} placeholder="you@example.com" placeholderTextColor={C.muted}
+              <Text style={s.label}>{t('auth.email')}</Text>
+              <TextInput style={s.input} placeholder={t('auth.emailPh')} placeholderTextColor={C.muted}
                 value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
             </View>
 
             <View style={s.fieldGroup}>
-              <Text style={s.label}>PASSWORD</Text>
+              <Text style={s.label}>{t('auth.password')}</Text>
               <View style={s.passWrap}>
-                <TextInput style={s.passInput} placeholder="Min. 6 characters" placeholderTextColor={C.muted}
+                <TextInput style={s.passInput} placeholder={t('auth.passwordPh')} placeholderTextColor={C.muted}
                   value={password} onChangeText={setPassword} secureTextEntry={!showPass} />
                 <TouchableOpacity onPress={() => setShowPass(!showPass)} style={s.eyeBtn}>
-                  <Text style={s.eyeText}>{showPass ? 'HIDE' : 'SHOW'}</Text>
+                  <Text style={s.eyeText}>{showPass ? t('auth.hide') : t('auth.show')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             {mode === 'signup' && (
               <View style={s.fieldGroup}>
-                <Text style={s.label}>CONFIRM PASSWORD</Text>
+                <Text style={s.label}>{t('auth.confirm')}</Text>
                 <View style={s.passWrap}>
-                  <TextInput style={s.passInput} placeholder="Repeat password" placeholderTextColor={C.muted}
+                  <TextInput style={s.passInput} placeholder={t('auth.confirmPh')} placeholderTextColor={C.muted}
                     value={confirm} onChangeText={setConfirm} secureTextEntry={!showConfirm} />
                   <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} style={s.eyeBtn}>
-                    <Text style={s.eyeText}>{showConfirm ? 'HIDE' : 'SHOW'}</Text>
+                    <Text style={s.eyeText}>{showConfirm ? t('auth.hide') : t('auth.show')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -123,16 +138,16 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
             <TouchableOpacity style={[s.btn, loading && { opacity: 0.6 }]} onPress={handle} disabled={loading} activeOpacity={0.85}>
               {loading
                 ? <ActivityIndicator color={C.bg} />
-                : <Text style={s.btnText}>{mode === 'login' ? 'LOG IN' : 'CREATE ACCOUNT'}</Text>
+                : <Text style={s.btnText}>{mode === 'login' ? t('auth.login') : t('auth.create')}</Text>
               }
             </TouchableOpacity>
 
             <View style={s.switchRow}>
               <Text style={s.switchText}>
-                {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+                {mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')}
               </Text>
               <TouchableOpacity onPress={() => { setMode(mode === 'login' ? 'signup' : 'login'); setPassword(''); setConfirm(''); }}>
-                <Text style={s.link}>{mode === 'login' ? ' Sign Up' : ' Log In'}</Text>
+                <Text style={s.link}>{mode === 'login' ? t('auth.toSignup') : t('auth.toLogin')}</Text>
               </TouchableOpacity>
             </View>
 

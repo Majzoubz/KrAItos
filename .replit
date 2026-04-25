@@ -52,3 +52,7 @@ EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET = "fitlife-2741f.firebasestorage.app"
 EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = "972031286539"
 EXPO_PUBLIC_FIREBASE_APP_ID = "1:972031286539:web:41d05871d9a210216f560e"
 EXPO_PUBLIC_GROQ_KEY = "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"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000

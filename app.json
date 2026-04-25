@@ -11,16 +11,23 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
+    "web": {
+      "favicon": "./assets/logo.png"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.greengain.app",
+      "icon": "./assets/logo.png",
       "infoPlist": {
         "NSCameraUsageDescription": "KrAItos uses the camera to scan your meal and analyze its nutritional content.",
         "NSPhotoLibraryUsageDescription": "KrAItos accesses your photo library so you can pick a meal photo for analysis.",
-        "NSPhotoLibraryAddUsageDescription": "KrAItos saves meal photos to your library."
+        "NSPhotoLibraryAddUsageDescription": "KrAItos saves meal photos to your library.",
+        "NSMicrophoneUsageDescription": "KrAItos uses the microphone so you can log meals by voice.",
+        "NSSpeechRecognitionUsageDescription": "KrAItos transcribes what you say to add meals to your nutrition log."
       }
     },
     "android": {
+      "icon": "./assets/logo.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#000000"
@@ -29,13 +36,15 @@
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO"
       ]
     },
     "plugins": [
       "expo-camera",
       "expo-image-picker",
-      "expo-media-library"
+      "expo-media-library",
+      "expo-speech-recognition"
     ]
   }
 }

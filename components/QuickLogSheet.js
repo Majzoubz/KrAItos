@@ -8,33 +8,24 @@ import {
   getFavorites, getYesterdayMeal, getUsualForSlot, parseMealDescription,
   appendToTodayLog, currentMealTime, loadPinnedFavorites, pinFavorite,
 } from '../utils/quickLog';
+import { isVoiceAvailable, startVoice } from '../utils/voice';
 
 const MEAL_TIMES = ['Breakfast', 'Morning Snack', 'Lunch', 'Afternoon Snack', 'Dinner', 'Late Snack'];
 
-// Cross-platform speech recognition (web only)
 function useSpeechToText(onResult) {
-  const recRef = useRef(null);
-  const supported = Platform.OS === 'web'
-    && typeof window !== 'undefined'
-    && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  const stopRef = useRef(null);
+  const supported = isVoiceAvailable();
 
   const start = () => {
     if (!supported) return false;
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const rec = new SR();
-    rec.lang = 'en-US';
-    rec.interimResults = false;
-    rec.continuous = false;
-    rec.onresult = (ev) => {
-      const txt = Array.from(ev.results).map(r => r[0].transcript).join(' ');
-      onResult(txt);
-    };
-    rec.onerror = () => {};
-    rec.start();
-    recRef.current = rec;
-    return true;
+    stopRef.current = startVoice({
+      onResult: (txt) => onResult(txt),
+      onError: () => {},
+      onEnd: () => { stopRef.current = null; },
+    });
+    return !!stopRef.current || Platform.OS !== 'web';
   };
-  const stop = () => { try { recRef.current?.stop(); } catch {} };
+  const stop = () => { try { stopRef.current?.(); } catch {} stopRef.current = null; };
   return { supported, start, stop };
 }
 
@@ -103,7 +94,12 @@ export default function QuickLogSheet({ visible, onClose, uid, onLogged }) {
 
   const handleVoice = () => {
     if (!speech.supported) {
-      Alert.alert('Voice not supported here', 'Voice input works in your browser. Just type the meal below — we\'ll figure out the macros.');
+      Alert.alert(
+        'Voice not available',
+        Platform.OS === 'web'
+          ? 'Voice input works in Chrome or Safari. Just type the meal below — we\'ll figure out the macros.'
+          : 'This build does not include voice support. Build the app with EAS to enable on-device voice logging.'
+      );
       return;
     }
     setListening(true);

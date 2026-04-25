@@ -8,6 +8,7 @@ import Svg, { Circle, Path, Defs, LinearGradient, Stop } from 'react-native-svg'
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme } from '../theme/ThemeContext';
+import { useI18n } from '../i18n/I18nContext';
 import { callAI, callAIWithImage, parseJSON } from '../utils/api';
 import { Auth } from '../utils/auth';
 import { Storage, KEYS } from '../utils/storage';
@@ -16,7 +17,12 @@ const { width } = Dimensions.get('window');
 
 const NUTRITION_SYSTEM = 'You are a professional nutritionist. Return ONLY valid JSON with no markdown and no extra text. Use this exact structure: {"meal":"name","calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"sugar":number,"sodium":number,"servingSize":"description","healthScore":number,"tips":["tip1","tip2"]}. All macros in grams. healthScore is 1-10.';
 
-const MEAL_TIMES = ['Breakfast', 'Lunch', 'Snack', 'Dinner'];
+const MEAL_TIME_KEYS = [
+  { id: 'Breakfast', tk: 'scanner.mealTimes.breakfast' },
+  { id: 'Lunch',     tk: 'scanner.mealTimes.lunch' },
+  { id: 'Snack',     tk: 'scanner.mealTimes.snack' },
+  { id: 'Dinner',    tk: 'scanner.mealTimes.dinner' },
+];
 
 function ScoreRing({ score, color, bg, size = 64 }) {
   const stroke = 6;
@@ -73,7 +79,7 @@ function MacroDonut({ p, c, f, size = 160, colors }) {
   );
 }
 
-function Viewfinder({ C, size, scanning }) {
+function Viewfinder({ C, size, scanning, t }) {
   const beam = useRef(new Animated.Value(0)).current;
   const corner = useRef(new Animated.Value(0)).current;
 
@@ -170,7 +176,7 @@ function Viewfinder({ C, size, scanning }) {
           </Svg>
         </View>
         <Text style={{ color: C.green, fontSize: 11, fontWeight: '800', letterSpacing: 2, marginTop: 8 }}>
-          {scanning ? 'ANALYZING…' : 'TAP TO SCAN'}
+          {scanning ? t('scanner.viewfinder.scanning') : t('scanner.viewfinder.tap')}
         </Text>
       </View>
     </View>
@@ -179,6 +185,7 @@ function Viewfinder({ C, size, scanning }) {
 
 export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
   const { C } = useTheme();
+  const { t, isRTL } = useI18n();
   const s = makeStyles(C);
   const [phase, setPhase]           = useState('idle');
   const [capturedImage, setCaptured] = useState(null);
@@ -228,13 +235,13 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
     if (type === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Camera access is required to scan meals. Please enable it in Settings.');
+        Alert.alert(t('scanner.alerts.permTitle'), t('scanner.alerts.permCamera'));
         return false;
       }
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Photo library access is required. Please enable it in Settings.');
+        Alert.alert(t('scanner.alerts.permTitle'), t('scanner.alerts.permLibrary'));
         return false;
       }
     }
@@ -276,14 +283,14 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
         raw = await callAIWithImage(base64, mimeType, description.trim() || null);
       } else {
         if (!description.trim()) {
-          Alert.alert('Add a description', 'Please take a photo or describe your meal.');
+          Alert.alert(t('scanner.alerts.descNeededTitle'), t('scanner.alerts.descNeeded'));
           setLoading(false); return;
         }
         raw = await callAI(NUTRITION_SYSTEM, 'Analyze this meal: ' + description.trim());
       }
       const parsed = parseJSON(raw, null);
       if (!parsed || typeof parsed.calories !== 'number') {
-        Alert.alert('Could not analyze', 'The AI could not identify the meal. Try a clearer photo or add more description.');
+        Alert.alert(t('scanner.alerts.cantAnalyzeTitle'), t('scanner.alerts.cantAnalyze'));
         setLoading(false); return;
       }
       const entry = {
@@ -303,7 +310,7 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
       if (withStreak && onUserUpdate) onUserUpdate(withStreak);
       else if (updated && onUserUpdate) onUserUpdate(updated);
     } catch (e) {
-      Alert.alert('Error', e.message || 'Could not reach AI. Check your internet and API key.');
+      Alert.alert(t('scanner.alerts.errorTitle'), e.message || t('scanner.alerts.errorMsg'));
     } finally {
       setLoading(false);
     }
@@ -326,14 +333,14 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.titleBar}>
-          <Text style={s.titleBarText}>Meal History</Text>
+          <Text style={s.titleBarText}>{t('scanner.history.title')}</Text>
           <TouchableOpacity onPress={() => setShowHistory(false)}>
-            <Text style={s.titleBarAction}>Close</Text>
+            <Text style={s.titleBarAction}>{t('scanner.close')}</Text>
           </TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={s.scroll}>
           {history.length === 0 && (
-            <View style={s.emptyBox}><Text style={s.emptyText}>No meals scanned yet.</Text></View>
+            <View style={s.emptyBox}><Text style={s.emptyText}>{t('scanner.history.empty')}</Text></View>
           )}
           {history.map((h, i) => (
             <View key={i} style={s.historyCard}>
@@ -365,8 +372,8 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.titleBar}>
-          <TouchableOpacity onPress={reset}><Text style={s.titleBarAction}>‹ New scan</Text></TouchableOpacity>
-          <Text style={s.titleBarText}>Results</Text>
+          <TouchableOpacity onPress={reset}><Text style={s.titleBarAction}>{t('scanner.results.newScan')}</Text></TouchableOpacity>
+          <Text style={s.titleBarText}>{t('scanner.results.title')}</Text>
           <View style={{ width: 70 }} />
         </View>
         <Animated.ScrollView style={{ opacity: resultFade }} contentContainerStyle={s.scroll}>
@@ -407,35 +414,35 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
               </View>
             </View>
             <View style={s.legendCol}>
-              <LegendRow color={C.blue}   label="Protein" v={result.protein} pct={pPct} unit="g" />
-              <LegendRow color={C.orange} label="Carbs"   v={result.carbs}   pct={cPct} unit="g" />
-              <LegendRow color={C.purple} label="Fat"     v={result.fat}     pct={fPct} unit="g" />
+              <LegendRow color={C.blue}   label={t('foodlog.macros.protein')} v={result.protein} pct={pPct} unit="g" />
+              <LegendRow color={C.orange} label={t('foodlog.macros.carbs')}   v={result.carbs}   pct={cPct} unit="g" />
+              <LegendRow color={C.purple} label={t('foodlog.macros.fat')}     v={result.fat}     pct={fPct} unit="g" />
             </View>
           </View>
 
           {/* Micros */}
           <View style={s.microRow}>
-            <MicroPill label="Fiber"  v={result.fiber}  unit="g"  C={C} />
-            <MicroPill label="Sugar"  v={result.sugar}  unit="g"  C={C} />
-            <MicroPill label="Sodium" v={result.sodium} unit="mg" C={C} />
+            <MicroPill label={t('scanner.micro.fiber')}  v={result.fiber}  unit="g"  C={C} />
+            <MicroPill label={t('scanner.micro.sugar')}  v={result.sugar}  unit="g"  C={C} />
+            <MicroPill label={t('scanner.micro.sodium')} v={result.sodium} unit="mg" C={C} />
           </View>
 
           {/* Meal time selector */}
-          <Text style={s.label}>Log as</Text>
+          <Text style={s.label}>{t('scanner.results.logAs')}</Text>
           <View style={s.segment}>
-            {MEAL_TIMES.map(m => (
-              <TouchableOpacity key={m}
-                style={[s.segmentBtn, mealTime === m && s.segmentBtnActive]}
-                onPress={() => setMealTime(m)}
+            {MEAL_TIME_KEYS.map(m => (
+              <TouchableOpacity key={m.id}
+                style={[s.segmentBtn, mealTime === m.id && s.segmentBtnActive]}
+                onPress={() => setMealTime(m.id)}
               >
-                <Text style={[s.segmentText, mealTime === m && s.segmentTextActive]}>{m}</Text>
+                <Text style={[s.segmentText, mealTime === m.id && s.segmentTextActive]}>{t(m.tk)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {result.tips && result.tips.length > 0 && (
             <View style={s.tipsBox}>
-              <Text style={s.boxTitle}>AI Tips</Text>
+              <Text style={s.boxTitle}>{t('scanner.tips')}</Text>
               {result.tips.map((tip, i) => (
                 <View key={i} style={s.tipRow}>
                   <View style={s.tipDot} />
@@ -468,15 +475,15 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
                 if (onAddToLog) onAddToLog();
               }}
             >
-              <Text style={s.primaryBtnText}>+ Add to {mealTime}</Text>
+              <Text style={s.primaryBtnText}>{t('scanner.addToMeal', { mealTime: t(MEAL_TIME_KEYS.find(x => x.id === mealTime)?.tk || 'scanner.mealTimes.lunch') })}</Text>
             </TouchableOpacity>
           ) : (
             <View style={s.addedBadge}>
-              <Text style={s.addedBadgeText}>✓ Added to today's log</Text>
+              <Text style={s.addedBadgeText}>{t('scanner.added')}</Text>
             </View>
           )}
           <TouchableOpacity style={s.ghostBtn} onPress={reset}>
-            <Text style={s.ghostBtnText}>Scan another meal</Text>
+            <Text style={s.ghostBtnText}>{t('scanner.scanAnother')}</Text>
           </TouchableOpacity>
         </Animated.ScrollView>
       </SafeAreaView>
@@ -488,8 +495,8 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.titleBar}>
-          <TouchableOpacity onPress={() => setPhase('idle')}><Text style={s.titleBarAction}>‹ Retake</Text></TouchableOpacity>
-          <Text style={s.titleBarText}>Review</Text>
+          <TouchableOpacity onPress={() => setPhase('idle')}><Text style={s.titleBarAction}>{t('scanner.preview.retake')}</Text></TouchableOpacity>
+          <Text style={s.titleBarText}>{t('scanner.preview.review')}</Text>
           <View style={{ width: 70 }} />
         </View>
         <ScrollView contentContainerStyle={s.scroll}>
@@ -498,27 +505,27 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
             {loading && (
               <View style={s.previewOverlay}>
                 <ScanRing C={C} />
-                <Text style={s.previewOverlayText}>AI is identifying your meal…</Text>
-                <Text style={s.previewOverlaySub}>Detecting ingredients & estimating macros</Text>
+                <Text style={s.previewOverlayText}>{t('scanner.preview.identifying')}</Text>
+                <Text style={s.previewOverlaySub}>{t('scanner.preview.detecting')}</Text>
               </View>
             )}
           </View>
 
-          <Text style={s.label}>Add context (optional)</Text>
+          <Text style={s.label}>{t('scanner.preview.contextLabel')}</Text>
           <TextInput
             style={s.input}
-            placeholder="e.g. large portion, extra cheese, home cooked…"
+            placeholder={t('scanner.preview.contextPh')}
             placeholderTextColor={C.muted}
             value={description}
             onChangeText={setDesc}
             multiline
           />
-          <Text style={s.inputHint}>The more detail, the more accurate the macros.</Text>
+          <Text style={s.inputHint}>{t('scanner.preview.contextHint')}</Text>
 
           <TouchableOpacity style={[s.primaryBtn, loading && { opacity: 0.6 }]} onPress={analyze} disabled={loading}>
             {loading
-              ? <Text style={s.primaryBtnText}>Analyzing…</Text>
-              : <Text style={s.primaryBtnText}>Analyze meal</Text>}
+              ? <Text style={s.primaryBtnText}>{t('scanner.preview.analyzing')}</Text>
+              : <Text style={s.primaryBtnText}>{t('scanner.preview.analyze')}</Text>}
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -531,11 +538,11 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
     <SafeAreaView style={s.safe}>
       <View style={s.titleBar}>
         <View>
-          <Text style={s.titleBarText}>AI Scanner</Text>
-          <Text style={s.titleBarSub}>Snap → identify → log</Text>
+          <Text style={s.titleBarText}>{t('scanner.idle.title')}</Text>
+          <Text style={s.titleBarSub}>{t('scanner.idle.subtitle')}</Text>
         </View>
         <TouchableOpacity onPress={() => setShowHistory(true)} style={s.histBtn}>
-          <Text style={s.histBtnText}>{history.length > 0 ? `History · ${history.length}` : 'History'}</Text>
+          <Text style={s.histBtnText}>{history.length > 0 ? t('scanner.idle.historyCount', { count: history.length }) : t('scanner.idle.history')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -546,19 +553,19 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
             style={[s.modeBtn, inputMode === 'photo' && s.modeBtnActive]}
             onPress={() => setInputMode('photo')}
           >
-            <Text style={[s.modeText, inputMode === 'photo' && s.modeTextActive]}>📷 Photo</Text>
+            <Text style={[s.modeText, inputMode === 'photo' && s.modeTextActive]}>{t('scanner.mode.photo')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.modeBtn, inputMode === 'describe' && s.modeBtnActive]}
             onPress={() => setInputMode('describe')}
           >
-            <Text style={[s.modeText, inputMode === 'describe' && s.modeTextActive]}>✎ Describe</Text>
+            <Text style={[s.modeText, inputMode === 'describe' && s.modeTextActive]}>{t('scanner.mode.describe')}</Text>
           </TouchableOpacity>
         </View>
 
         {inputMode === 'photo' ? (
           <>
-            <Viewfinder C={C} size={vfSize} scanning={loading} />
+            <Viewfinder C={C} size={vfSize} scanning={loading} t={t} />
 
             <Animated.View style={[s.shutterWrap, { transform: [{ scale: shutterPulse }] }]}>
               <TouchableOpacity activeOpacity={0.85} onPress={takePhoto} style={s.shutter}>
@@ -571,33 +578,33 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
             <View style={s.actionRow}>
               <TouchableOpacity style={s.sideBtn} onPress={pickFromLibrary}>
                 <Text style={s.sideBtnIcon}>🖼</Text>
-                <Text style={s.sideBtnText}>Library</Text>
+                <Text style={s.sideBtnText}>{t('scanner.action.library')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.sideBtn} onPress={() => setInputMode('describe')}>
                 <Text style={s.sideBtnIcon}>✎</Text>
-                <Text style={s.sideBtnText}>Describe</Text>
+                <Text style={s.sideBtnText}>{t('scanner.action.describe')}</Text>
               </TouchableOpacity>
             </View>
 
             <View style={s.tipBanner}>
-              <View style={s.tipBadge}><Text style={s.tipBadgeText}>TIP</Text></View>
+              <View style={s.tipBadge}><Text style={s.tipBadgeText}>{t('scanner.tipBadge')}</Text></View>
               <Text style={s.tipBannerText}>
-                Top-down shot in good light. Capture the whole plate for the best macro estimate.
+                {t('scanner.tipBanner')}
               </Text>
             </View>
           </>
         ) : (
           <>
-            <Text style={s.label}>Describe your meal</Text>
+            <Text style={s.label}>{t('scanner.describe.label')}</Text>
             <TextInput
               style={s.input}
-              placeholder="e.g. 200g grilled chicken, 1 cup brown rice, side salad with olive oil"
+              placeholder={t('scanner.describe.placeholder')}
               placeholderTextColor={C.muted}
               value={description}
               onChangeText={setDesc}
               multiline
             />
-            <Text style={s.inputHint}>Be specific with portions for the best accuracy.</Text>
+            <Text style={s.inputHint}>{t('scanner.describe.hint')}</Text>
 
             <TouchableOpacity
               style={[s.primaryBtn, (loading || !description.trim()) && { opacity: 0.4 }]}
@@ -605,12 +612,12 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
               disabled={loading || !description.trim()}
             >
               {loading
-                ? <><ActivityIndicator color={C.bg} /><Text style={[s.primaryBtnText, { marginLeft: 8 }]}>Analyzing…</Text></>
-                : <Text style={s.primaryBtnText}>Analyze with AI</Text>}
+                ? <><ActivityIndicator color={C.bg} /><Text style={[s.primaryBtnText, { marginLeft: 8 }]}>{t('scanner.preview.analyzing')}</Text></>
+                : <Text style={s.primaryBtnText}>{t('scanner.describe.analyzeAi')}</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity style={s.ghostBtn} onPress={() => setInputMode('photo')}>
-              <Text style={s.ghostBtnText}>Switch to photo scan</Text>
+              <Text style={s.ghostBtnText}>{t('scanner.describe.toPhoto')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -619,9 +626,9 @@ export default function FoodScannerScreen({ user, onUserUpdate, onAddToLog }) {
         {history.length > 0 && (
           <>
             <View style={s.recentHead}>
-              <Text style={s.recentTitle}>Recent scans</Text>
+              <Text style={s.recentTitle}>{t('scanner.recent.title')}</Text>
               <TouchableOpacity onPress={() => setShowHistory(true)}>
-                <Text style={s.recentLink}>See all</Text>
+                <Text style={s.recentLink}>{t('scanner.recent.seeAll')}</Text>
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={{ paddingHorizontal: 20 }}>

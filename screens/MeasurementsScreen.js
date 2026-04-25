@@ -5,33 +5,96 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme/ThemeContext';
+import { useT, useI18n } from '../i18n/I18nContext';
+import { useUnits, lbToKg, inToCm, kgToLb, cmToIn } from '../utils/units';
 import { Storage, KEYS } from '../utils/storage';
+
+const ENTRY_VERSION = 2;
+
+// Convert legacy measurement entries (saved before canonical-metric storage existed)
+// into kg/cm. Heuristic: assume entries were saved in the user's current unit system.
+function migrateLegacyEntries(entries, system) {
+  if (!Array.isArray(entries) || entries.length === 0) return { entries: entries || [], changed: false };
+  let changed = false;
+  const next = entries.map(e => {
+    if (!e || (typeof e.v === 'number' && e.v >= ENTRY_VERSION)) return e;
+    const out = { ...e };
+    let convertedAny = false;
+    if (system === 'imperial') {
+      for (const f of FIELD_DEFS) {
+        const val = out[f.key];
+        if (val == null) continue;
+        const n = Number(val);
+        if (!isFinite(n)) continue;
+        if (f.kind === 'weight') { out[f.key] = Math.round(lbToKg(n) * 100) / 100; convertedAny = true; }
+        else if (f.kind === 'length') { out[f.key] = Math.round(inToCm(n) * 100) / 100; convertedAny = true; }
+      }
+      if (convertedAny) {
+        out.migrated = true;
+        out.migratedFrom = 'imperial';
+      }
+    }
+    out.v = ENTRY_VERSION;
+    changed = true;
+    return out;
+  });
+  return { entries: next, changed };
+}
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-const FIELDS = [
-  { key: 'weight',  label: 'Weight',     unit: 'kg', icon: '⚖️' },
-  { key: 'waist',   label: 'Waist',      unit: 'cm', icon: '📏' },
-  { key: 'chest',   label: 'Chest',      unit: 'cm', icon: '🎯' },
-  { key: 'hips',    label: 'Hips',       unit: 'cm', icon: '🔻' },
-  { key: 'arm',     label: 'Arm',        unit: 'cm', icon: '💪' },
-  { key: 'thigh',   label: 'Thigh',      unit: 'cm', icon: '🦵' },
-  { key: 'neck',    label: 'Neck',       unit: 'cm', icon: '👔' },
-  { key: 'bodyFat', label: 'Body fat %', unit: '%',  icon: '📊' },
+// Canonical storage: weight = kg, lengths = cm, bodyFat = %.
+// `kind` tells us which converter to use for display/parse.
+const FIELD_DEFS = [
+  { key: 'weight',  labelKey: 'measurements.weight',  kind: 'weight', icon: '⚖️' },
+  { key: 'waist',   labelKey: 'measurements.waist',   kind: 'length', icon: '📏' },
+  { key: 'chest',   labelKey: 'measurements.chest',   kind: 'length', icon: '🎯' },
+  { key: 'hips',    labelKey: 'measurements.hips',    kind: 'length', icon: '🔻' },
+  { key: 'arm',     labelKey: 'measurements.arm',     kind: 'length', icon: '💪' },
+  { key: 'thigh',   labelKey: 'measurements.thigh',   kind: 'length', icon: '🦵' },
+  { key: 'neck',    labelKey: 'measurements.neck',    kind: 'length', icon: '👔' },
+  { key: 'bodyFat', labelKey: 'measurements.bodyFat', kind: 'pct',    icon: '📊' },
 ];
 
 const PHOTO_LABELS = ['Front', 'Side', 'Back'];
 
 export default function MeasurementsScreen({ user, onNavigate }) {
   const { C } = useTheme();
+  const t = useT();
+  const { isRTL } = useI18n();
+  const U = useUnits();
   const s = makeStyles(C);
   const uid = user.email || user.uid;
+
+  // Build per-render fields with localized labels + correct unit symbol for the user's system.
+  const FIELDS = FIELD_DEFS.map(f => ({
+    ...f,
+    label: t(f.labelKey),
+    unit: f.kind === 'weight' ? U.weightUnit : f.kind === 'length' ? U.lengthUnit : '%',
+  }));
+
+  // Convert a stored canonical value to the user's display unit.
+  const toDisplay = (key, kind, val) => {
+    if (val == null) return null;
+    if (kind === 'weight') return U.weight(val).value;
+    if (kind === 'length') return U.length(val).value;
+    return Math.round(Number(val) * 10) / 10; // pct
+  };
+
+  // Convert a typed display-unit string back to canonical metric for storage.
+  const toCanonical = (kind, str) => {
+    if (kind === 'weight') return U.parseWeight(str);
+    if (kind === 'length') return U.parseLength(str);
+    const n = parseFloat(String(str).replace(',', '.'));
+    return isFinite(n) ? n : null;
+  };
 
   const [tab, setTab] = useState('measure');
   const [history, setHistory] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
   const [addDraft, setAddDraft] = useState({});
+  const [editingTimestamp, setEditingTimestamp] = useState(null);
   const [compare, setCompare] = useState({ a: null, b: null });
   const [pickerLabel, setPickerLabel] = useState(null); // string when picking compare slot
   const [actionSheet, setActionSheet] = useState(null); // { title, actions: [{label, onPress, destructive}] }
@@ -41,13 +104,28 @@ export default function MeasurementsScreen({ user, onNavigate }) {
   const closeActions = () => setActionSheet(null);
 
   const load = useCallback(async () => {
-    const [m, p] = await Promise.all([
+    const [m, p, mig] = await Promise.all([
       Storage.get(KEYS.MEASUREMENTS(uid)),
       Storage.get(KEYS.PROGRESS_PHOTOS(uid)),
+      Storage.get(KEYS.MEASUREMENTS_MIGRATION(uid)),
     ]);
-    setHistory(Array.isArray(m) ? m : []);
+    let entries = Array.isArray(m) ? m : [];
+    const alreadyMigrated = mig && typeof mig.v === 'number' && mig.v >= ENTRY_VERSION;
+    if (!alreadyMigrated) {
+      const result = migrateLegacyEntries(entries, U.system);
+      entries = result.entries;
+      if (result.changed) {
+        await Storage.set(KEYS.MEASUREMENTS(uid), entries);
+      }
+      await Storage.set(KEYS.MEASUREMENTS_MIGRATION(uid), {
+        v: ENTRY_VERSION,
+        system: U.system,
+        at: Date.now(),
+      });
+    }
+    setHistory(entries);
     setPhotos(Array.isArray(p) ? p : []);
-  }, [uid]);
+  }, [uid, U.system]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -56,28 +134,39 @@ export default function MeasurementsScreen({ user, onNavigate }) {
 
   const saveAdd = async () => {
     setSaveError(null);
-    const entry = {
-      date: new Date().toISOString().slice(0, 10),
-      timestamp: Date.now(),
-    };
+    const isEditing = editingTimestamp != null;
+    const existing = isEditing ? history.find(e => e.timestamp === editingTimestamp) : null;
+    const entry = isEditing
+      ? { ...existing, v: ENTRY_VERSION, migrated: false, migratedFrom: undefined }
+      : { date: new Date().toISOString().slice(0, 10), timestamp: Date.now(), v: ENTRY_VERSION };
+    if (isEditing) {
+      // Clear previous values so blanked-out fields are removed.
+      FIELD_DEFS.forEach(f => { delete entry[f.key]; });
+    }
     let count = 0;
-    FIELDS.forEach(f => {
+    FIELD_DEFS.forEach(f => {
       const raw = (addDraft[f.key] || '').trim();
       if (!raw) return;
-      const v = parseFloat(raw);
-      if (!isNaN(v) && v > 0) { entry[f.key] = v; count += 1; }
+      const v = toCanonical(f.kind, raw);
+      if (v != null && v > 0) {
+        entry[f.key] = Math.round(v * 100) / 100; // store metric, 2dp
+        count += 1;
+      }
     });
     if (count === 0) {
-      setSaveError('Enter at least one number above.');
+      setSaveError(t('common.error'));
       return;
     }
     setSaving(true);
-    const next = [...history, entry].slice(-200);
+    const next = isEditing
+      ? history.map(e => (e.timestamp === editingTimestamp ? entry : e))
+      : [...history, entry].slice(-200);
     try {
       const ok = await Storage.set(KEYS.MEASUREMENTS(uid), next);
       if (ok === false) throw new Error('Could not save to cloud. Check your connection.');
       setHistory(next);
       setAddDraft({});
+      setEditingTimestamp(null);
       setShowAdd(false);
     } catch (e) {
       setSaveError(e.message || 'Save failed. Please try again.');
@@ -90,16 +179,75 @@ export default function MeasurementsScreen({ user, onNavigate }) {
     if (saving) return;
     setShowAdd(false);
     setAddDraft({});
+    setEditingTimestamp(null);
     setSaveError(null);
   };
 
-  const deleteEntry = (timestamp) => {
-    openActions('Delete this entry?', [
-      { label: 'Delete', destructive: true, onPress: async () => {
-        const next = history.filter(e => e.timestamp !== timestamp);
-        await Storage.set(KEYS.MEASUREMENTS(uid), next);
-        setHistory(next);
-      }},
+  const openEdit = (entry) => {
+    if (!entry) return;
+    const draft = {};
+    FIELD_DEFS.forEach(f => {
+      if (entry[f.key] != null) {
+        const dv = toDisplay(f.key, f.kind, entry[f.key]);
+        if (dv != null) draft[f.key] = String(dv);
+      }
+    });
+    setAddDraft(draft);
+    setEditingTimestamp(entry.timestamp);
+    setSaveError(null);
+    setShowAdd(true);
+  };
+
+  // Compute the original (pre-migration) value in the system the entry was migrated from.
+  const originalValue = (key, kind, val, fromSystem) => {
+    if (val == null) return null;
+    if (fromSystem !== 'imperial') return val;
+    if (kind === 'weight') return Math.round(kgToLb(Number(val)) * 10) / 10;
+    if (kind === 'length') return Math.round(cmToIn(Number(val)) * 10) / 10;
+    return val;
+  };
+
+  const originalUnit = (kind, fromSystem) => {
+    if (kind === 'weight') return fromSystem === 'imperial' ? 'lb' : 'kg';
+    if (kind === 'length') return fromSystem === 'imperial' ? 'in' : 'cm';
+    return '%';
+  };
+
+  const showMigrationInfo = (entry) => {
+    const from = entry.migratedFrom || 'imperial';
+    const lines = FIELD_DEFS
+      .filter(f => entry[f.key] != null && (f.kind === 'weight' || f.kind === 'length'))
+      .map(f => {
+        const orig = originalValue(f.key, f.kind, entry[f.key], from);
+        const cur = toDisplay(f.key, f.kind, entry[f.key]);
+        const curUnit = f.kind === 'weight' ? U.weightUnit : U.lengthUnit;
+        return `${f.icon} ${t(f.labelKey)}: ${orig}${originalUnit(f.kind, from)} → ${cur}${curUnit}`;
+      })
+      .join('\n');
+    const explain = t('measurements.autoConvertedExplain', {
+      from: from === 'imperial' ? 'lb/in' : 'kg/cm',
+      to: 'kg/cm',
+    });
+    openActions(
+      t('measurements.autoConvertedTitle') + (lines ? '\n\n' + lines + '\n\n' + explain : '\n\n' + explain),
+      [
+        { label: t('measurements.editEntry'), onPress: () => openEdit(entry) },
+      ]
+    );
+  };
+
+  const removeEntry = async (timestamp) => {
+    const next = history.filter(e => e.timestamp !== timestamp);
+    await Storage.set(KEYS.MEASUREMENTS(uid), next);
+    setHistory(next);
+  };
+
+  const openRowActions = (entry) => {
+    if (!entry) return;
+    const dateLabel = new Date(entry.timestamp || entry.date).toLocaleDateString();
+    openActions(dateLabel, [
+      { label: t('measurements.editEntry'), onPress: () => openEdit(entry) },
+      { label: 'Delete', destructive: true, onPress: () => removeEntry(entry.timestamp) },
     ]);
   };
 
@@ -160,17 +308,17 @@ export default function MeasurementsScreen({ user, onNavigate }) {
   return (
     <SafeAreaView style={s.root}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => onNavigate('progress')} style={s.backBtn}><Text style={s.backBtnText}>‹</Text></TouchableOpacity>
-        <Text style={s.headerTitle}>Body Tracker</Text>
+        <TouchableOpacity onPress={() => onNavigate('progress')} style={s.backBtn}><Text style={s.backBtnText}>{isRTL ? '›' : '‹'}</Text></TouchableOpacity>
+        <Text style={s.headerTitle}>{t('measurements.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <View style={s.tabRow}>
         <TouchableOpacity style={[s.tab, tab === 'measure' && s.tabActive]} onPress={() => setTab('measure')}>
-          <Text style={[s.tabText, tab === 'measure' && s.tabTextActive]}>Measurements</Text>
+          <Text style={[s.tabText, tab === 'measure' && s.tabTextActive]}>{t('measurements.tabMeasure')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.tab, tab === 'photos' && s.tabActive]} onPress={() => setTab('photos')}>
-          <Text style={[s.tabText, tab === 'photos' && s.tabTextActive]}>Photos</Text>
+          <Text style={[s.tabText, tab === 'photos' && s.tabTextActive]}>{t('measurements.tabPhotos')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -178,15 +326,15 @@ export default function MeasurementsScreen({ user, onNavigate }) {
         {tab === 'measure' && (
           <>
             <View style={s.latestCard}>
-              <Text style={s.latestLabel}>LATEST</Text>
+              <Text style={s.latestLabel}>{t('measurements.latest')}</Text>
               {history.length === 0 ? (
-                <Text style={s.emptySub}>No measurements yet. Add your first to start tracking.</Text>
+                <Text style={s.emptySub}>{t('measurements.empty')}</Text>
               ) : (
                 <View style={s.latestGrid}>
                   {FIELDS.filter(f => latest[f.key] != null).map(f => {
-                    const cur = latest[f.key];
-                    const prev = previous?.[f.key];
-                    const delta = prev != null ? +(cur - prev).toFixed(1) : null;
+                    const cur = toDisplay(f.key, f.kind, latest[f.key]);
+                    const prev = previous?.[f.key] != null ? toDisplay(f.key, f.kind, previous[f.key]) : null;
+                    const delta = prev != null && cur != null ? +(cur - prev).toFixed(1) : null;
                     const goodDir = f.key === 'weight' || f.key === 'waist' || f.key === 'bodyFat' ? 'down' : 'up';
                     const isGood = delta != null && (goodDir === 'down' ? delta < 0 : delta > 0);
                     return (
@@ -207,23 +355,34 @@ export default function MeasurementsScreen({ user, onNavigate }) {
             </View>
 
             <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
-              <Text style={s.addBtnText}>+ ADD MEASUREMENT</Text>
+              <Text style={s.addBtnText}>{t('measurements.add')}</Text>
             </TouchableOpacity>
 
             {history.length > 0 && (
               <>
-                <Text style={s.sectionTitle}>History</Text>
+                <Text style={s.sectionTitle}>{t('measurements.history')}</Text>
                 {[...history].reverse().map((e, i) => (
-                  <TouchableOpacity key={e.timestamp || i} style={s.histRow} onLongPress={() => deleteEntry(e.timestamp)}>
-                    <Text style={s.histDate}>{new Date(e.timestamp || e.date).toLocaleDateString()}</Text>
+                  <TouchableOpacity key={e.timestamp || i} style={s.histRow} onPress={() => openRowActions(e)} onLongPress={() => openRowActions(e)}>
+                    <View style={s.histLeft}>
+                      <Text style={s.histDate}>{new Date(e.timestamp || e.date).toLocaleDateString()}</Text>
+                      {e.migrated && (
+                        <TouchableOpacity
+                          onPress={() => showMigrationInfo(e)}
+                          style={s.migBadge}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Text style={s.migBadgeText}>↻ {t('measurements.autoConverted')}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                     <View style={s.histVals}>
                       {FIELDS.filter(f => e[f.key] != null).map(f => (
-                        <Text key={f.key} style={s.histVal}>{f.icon}{e[f.key]}{f.unit}</Text>
+                        <Text key={f.key} style={s.histVal}>{f.icon}{toDisplay(f.key, f.kind, e[f.key])}{f.unit}</Text>
                       ))}
                     </View>
                   </TouchableOpacity>
                 ))}
-                <Text style={s.histHint}>Long-press a row to delete</Text>
+                <Text style={s.histHint}>{t('measurements.deleteHint')}</Text>
               </>
             )}
           </>
@@ -280,41 +439,44 @@ export default function MeasurementsScreen({ user, onNavigate }) {
       <Modal visible={showAdd} transparent animationType="slide" onRequestClose={closeAdd}>
         <TouchableOpacity activeOpacity={1} style={s.modalBackdrop} onPress={closeAdd}>
           <TouchableOpacity activeOpacity={1} style={s.modalSheet} onPress={() => {}}>
-            <Text style={s.modalTitle}>Add Measurement</Text>
-            <Text style={s.modalHint}>Fill in just the values you want to log — leave the rest blank.</Text>
+            <Text style={s.modalTitle}>{editingTimestamp != null ? t('measurements.modalTitleEdit') : t('measurements.modalTitle')}</Text>
+            <Text style={s.modalHint}>{t('measurements.modalHint')}</Text>
             <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
-              {FIELDS.map(f => (
-                <View key={f.key} style={s.modalRow}>
-                  <Text style={s.modalLabel}>{f.icon} {f.label}</Text>
-                  <View style={s.modalInputWrap}>
-                    <TextInput
-                      style={s.modalInput}
-                      value={addDraft[f.key] || ''}
-                      onChangeText={(v) => {
-                        const cleaned = v.replace(',', '.').replace(/[^0-9.]/g, '');
-                        const single = cleaned.split('.').slice(0, 2).join('.');
-                        setAddDraft(d => ({ ...d, [f.key]: single }));
-                        if (saveError) setSaveError(null);
-                      }}
-                      placeholder={latest[f.key] != null ? `last: ${latest[f.key]}` : '0'}
-                      placeholderTextColor={C.muted}
-                      keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
-                      inputMode="decimal"
-                    />
-                    <Text style={s.modalUnit}>{f.unit}</Text>
+              {FIELDS.map(f => {
+                const lastDisplay = latest[f.key] != null ? toDisplay(f.key, f.kind, latest[f.key]) : null;
+                return (
+                  <View key={f.key} style={s.modalRow}>
+                    <Text style={s.modalLabel}>{f.icon} {f.label}</Text>
+                    <View style={s.modalInputWrap}>
+                      <TextInput
+                        style={s.modalInput}
+                        value={addDraft[f.key] || ''}
+                        onChangeText={(v) => {
+                          const cleaned = v.replace(',', '.').replace(/[^0-9.]/g, '');
+                          const single = cleaned.split('.').slice(0, 2).join('.');
+                          setAddDraft(d => ({ ...d, [f.key]: single }));
+                          if (saveError) setSaveError(null);
+                        }}
+                        placeholder={lastDisplay != null ? String(lastDisplay) : '0'}
+                        placeholderTextColor={C.muted}
+                        keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
+                        inputMode="decimal"
+                      />
+                      <Text style={s.modalUnit}>{f.unit}</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </ScrollView>
             {saveError && <Text style={s.errorText}>{saveError}</Text>}
             <View style={s.modalBtnRow}>
               <TouchableOpacity style={[s.modalBtn, s.modalBtnGhost]} onPress={closeAdd} disabled={saving}>
-                <Text style={s.modalBtnGhostText}>Cancel</Text>
+                <Text style={s.modalBtnGhostText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, saving && { opacity: 0.6 }]} onPress={saveAdd} disabled={saving}>
                 {saving
                   ? <ActivityIndicator color={C.bg} />
-                  : <Text style={s.modalBtnText}>Save</Text>}
+                  : <Text style={s.modalBtnText}>{t('common.save')}</Text>}
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -419,8 +581,11 @@ const makeStyles = (C) => StyleSheet.create({
   addBtn: { backgroundColor: C.green, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 12 },
   addBtnText: { color: C.bg, fontWeight: '900', fontSize: 13, letterSpacing: 1.5 },
 
-  histRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: C.card, padding: 12, borderRadius: 10, marginBottom: 6, borderWidth: 1, borderColor: C.border },
+  histRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', backgroundColor: C.card, padding: 12, borderRadius: 10, marginBottom: 6, borderWidth: 1, borderColor: C.border },
+  histLeft: { flexDirection: 'column', alignItems: 'flex-start', gap: 4 },
   histDate: { color: C.white, fontSize: 12, fontWeight: '700' },
+  migBadge: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  migBadgeText: { color: C.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
   histVals: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6, flex: 1 },
   histVal: { color: C.muted, fontSize: 11 },
   histHint: { color: C.muted, fontSize: 10, textAlign: 'center', marginTop: 6 },
