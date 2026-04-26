@@ -23,9 +23,11 @@ function pillarsFor({ foodLog, plan, healthDay, adherenceForDay, plannedDayType 
     ? totals.protein >= protTarget * 0.9
     : totals.protein >= 80;
 
-  // Workout pillar: completed; OR today is a planned rest day (auto ✓)
+  // Workout pillar: only mark done if actually completed
   const isRestDay = plannedDayType ? /rest/i.test(plannedDayType) : false;
-  const workoutOk = isRestDay || !!(adherenceForDay && adherenceForDay.completed);
+  const completed = !!(adherenceForDay && adherenceForDay.completed);
+  const workoutOk = isRestDay || completed;
+  const workoutValue = completed ? '✓' : isRestDay ? 'Rest' : '—';
 
   // Steps pillar
   const steps = healthDay?.steps || 0;
@@ -34,7 +36,7 @@ function pillarsFor({ foodLog, plan, healthDay, adherenceForDay, plannedDayType 
   return {
     calories: { ok: calOk, value: Math.round(totals.calories), target: calTarget, label: 'Calories' },
     protein:  { ok: protOk, value: Math.round(totals.protein),  target: protTarget, label: 'Protein' },
-    workout:  { ok: workoutOk, value: workoutOk ? '✓' : '—', target: 1, label: 'Workout' },
+    workout:  { ok: workoutOk, value: workoutValue, target: 1, label: 'Workout' },
     steps:    { ok: stepsOk, value: steps, target: stepsTarget, label: 'Steps' },
   };
 }

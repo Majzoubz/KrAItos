@@ -5,6 +5,18 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useI18n } from '../i18n/I18nContext';
+import { select as hSelect, success as hSuccess } from '../utils/haptics';
+import {
+  getHealthProfile, saveHealthProfile,
+  getHealthDay, saveHealthDay,
+  getHealthSummary,
+  isStepCountingAvailable, requestPedometerPermission,
+  syncTodaySteps, subscribeSteps, stepsToActivityLevel,
+} from '../utils/health';
+import {
+  isAppleHealthAvailable, connectAppleHealth, fetchTodayFromAppleHealth,
+  isHealthConnectAvailable, connectHealthConnect, fetchTodayFromHealthConnect,
+} from '../utils/wearables';
 
 const PROVIDERS_BASE = [
   { id: 'pedometer', nameKey: 'health.providerPedometer', subKey: 'health.providerPedometerSub', icon: '👟', live: true },
@@ -14,6 +26,16 @@ const PROVIDERS_BASE = [
   { id: 'fitbit',    nameKey: 'health.providerFitbit',    subKey: 'health.providerFitbitSub',    icon: '◆',  tint: '#00B0B9', soon: true },
   { id: 'whoop',     nameKey: 'health.providerWhoop',     subKey: 'health.providerWhoopSub',     icon: '◉',  tint: '#FFD600', soon: true },
 ];
+
+function LoadingState({ message }) {
+  const { C } = useTheme();
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <ActivityIndicator size="large" color={C.green} />
+      {message ? <Text style={{ color: C.muted, marginTop: 12, fontSize: 13 }}>{message}</Text> : null}
+    </View>
+  );
+}
 
 function showAlert(title, msg) {
   if (Platform.OS === 'web') { try { window.alert(`${title}\n\n${msg}`); } catch {} return; }

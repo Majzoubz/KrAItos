@@ -220,10 +220,10 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
   fab: {
     position: 'absolute',
     ...(isRTL ? { left: 16 } : { right: 16 }),
-    bottom: 88,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    bottom: 100,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: C.green,
     alignItems: 'center',
     justifyContent: 'center',
@@ -236,7 +236,7 @@ const makeStyles = (C, isRTL) => StyleSheet.create({
       ? { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }
       : {}),
   },
-  fabIcon: { width: 70, height: 70 },
+  fabIcon: { paddingTop: 8, paddingRight: 2, width: 100, height: 100, tintColor: '#000000' },
 
   backdrop: {
     flex: 1,

@@ -77,7 +77,7 @@ export default function TodayScoreCard({ uid, healthUid, plan, foodLog, healthTo
               </View>
               <Text style={[s.pillarLabel, p.ok && s.pillarLabelOk]}>{p.label}</Text>
               <Text style={[s.pillarValue, p.ok && s.pillarValueOk]}>
-                {typeof p.value === 'number' && p.target ? `${p.value}/${p.target}` : (p.ok ? 'Done' : '—')}
+                {typeof p.value === 'number' && p.target ? `${p.value}/${p.target}` : (p.value === 'Rest' ? 'Rest' : p.value === '✓' ? 'Done' : '—')}
               </Text>
             </View>
           );
