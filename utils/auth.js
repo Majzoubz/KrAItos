@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 const SESSION_KEY = 'greengain_session_v2';
+const OTP_TTL_MS  = 10 * 60 * 1000; // 10 minutes
 
 const hashPassword = (password) => {
   let hash = 5381;
@@ -18,6 +19,46 @@ const emailToId = (email) => {
     .replace(/@/g, '__at__')
     .replace(/\./g, '__dot__');
 };
+
+const generateOTP = () => String(Math.floor(100000 + Math.random() * 900000));
+
+// Checks whether the email domain actually has mail servers (MX records).
+// Uses Google's public DNS-over-HTTPS — free, no API key.
+async function domainCanReceiveEmail(email) {
+  try {
+    const domain = email.split('@')[1];
+    if (!domain) return false;
+    const res  = await fetch(`https://dns.google/resolve?name=${domain}&type=MX`);
+    const data = await res.json();
+    return data.Status === 0 && Array.isArray(data.Answer) && data.Answer.length > 0;
+  } catch {
+    return true; // if DNS check fails (network issue), fail open so users aren't blocked
+  }
+}
+
+// Sends OTP email via Resend (free, 100 emails/day — one API key from resend.com).
+// Set EXPO_PUBLIC_RESEND_KEY in .env.  If not set, OTP is logged to console only.
+async function sendOTPEmail(toEmail, toName, code) {
+  const key = process.env.EXPO_PUBLIC_RESEND_KEY || '';
+  if (!key) {
+    console.warn(`[DEV] OTP for ${toEmail}: ${code}`);
+    return;
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      from: 'KrAItos <onboarding@resend.dev>',
+      to: toEmail,
+      subject: 'Your KrAItos verification code',
+      text: `Hi ${toName},\n\nYour KrAItos verification code is:\n\n${code}\n\nIt expires in 10 minutes.\n\nIf you did not create an account, ignore this email.`,
+    }),
+  });
+  if (!res.ok) throw new Error(`Email send failed (${res.status})`);
+}
 
 export const Auth = {
   onAuthChange(callback) {
@@ -35,11 +76,20 @@ export const Auth = {
         return { error: 'An account with this email already exists.' };
       }
 
+      // Validate email domain has real mail servers
+      const domainOk = await domainCanReceiveEmail(email);
+      if (!domainOk) {
+        return { error: 'This email address does not appear to be valid. Please use a real email.' };
+      }
+
+      const code = generateOTP();
+
       const userData = {
         fullName: fullName.trim(),
         email: email.toLowerCase().trim(),
         uid,
         passwordHash: hashPassword(password),
+        emailVerified: false,
         createdAt: Date.now(),
         mealsScanned: 0,
         workoutsLogged: 0,
@@ -47,12 +97,69 @@ export const Auth = {
         lastActive: null,
       };
 
-      await setDoc(userRef, userData);
-      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ uid }));
-      return { user: userData };
+      await Promise.all([
+        setDoc(userRef, userData),
+        setDoc(doc(db, 'otpVerifications', uid), {
+          code,
+          expiresAt: Date.now() + OTP_TTL_MS,
+        }),
+      ]);
+
+      await sendOTPEmail(email.toLowerCase().trim(), fullName.trim(), code);
+
+      return { needsVerification: true, uid, email: email.toLowerCase().trim(), fullName: fullName.trim() };
     } catch (e) {
       console.error('Signup error:', e);
       return { error: 'Signup failed. Check your internet connection.' };
+    }
+  },
+
+  async verifyOTP(uid, code) {
+    try {
+      const otpRef  = doc(db, 'otpVerifications', uid);
+      const otpSnap = await getDoc(otpRef);
+
+      if (!otpSnap.exists()) {
+        return { error: 'Verification code not found. Please request a new one.' };
+      }
+
+      const { code: stored, expiresAt } = otpSnap.data();
+
+      if (Date.now() > expiresAt) {
+        return { error: 'This code has expired. Please request a new one.' };
+      }
+
+      if (code.trim() !== stored) {
+        return { error: 'Incorrect code. Please check your email and try again.' };
+      }
+
+      const userRef = doc(db, 'users', uid);
+      await Promise.all([
+        updateDoc(userRef, { emailVerified: true }),
+        deleteDoc(otpRef),
+      ]);
+
+      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ uid }));
+      const snap = await getDoc(userRef);
+      return { user: { ...snap.data(), uid } };
+    } catch (e) {
+      console.error('OTP verify error:', e);
+      return { error: 'Verification failed. Check your internet connection.' };
+    }
+  },
+
+  async resendOTP(uid, email, fullName) {
+    try {
+      const code = generateOTP();
+      await setDoc(doc(db, 'otpVerifications', uid), {
+        code,
+        expiresAt: Date.now() + OTP_TTL_MS,
+      });
+      await sendOTPEmail(email, fullName, code);
+      return { success: true };
+    } catch (e) {
+      console.error('Resend OTP error:', e);
+      return { error: 'Could not resend code. Check your internet connection.' };
     }
   },
 
@@ -69,6 +176,17 @@ export const Auth = {
       const userData = snap.data();
       if (userData.passwordHash !== hashPassword(password)) {
         return { error: 'Incorrect password.' };
+      }
+
+      // emailVerified === undefined → old account created before this feature, let in
+      if (userData.emailVerified === false) {
+        return {
+          error: 'Please verify your email before logging in.',
+          needsVerification: true,
+          uid,
+          email: userData.email,
+          fullName: userData.fullName,
+        };
       }
 
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ uid }));

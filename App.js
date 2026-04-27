@@ -26,6 +26,7 @@ import BarcodeScanScreen   from './screens/BarcodeScanScreen';
 import WeeklyReviewScreen  from './screens/WeeklyReviewScreen';
 import MeasurementsScreen  from './screens/MeasurementsScreen';
 import CoachChatScreen     from './screens/CoachChatScreen';
+import VerificationScreen  from './screens/VerificationScreen';
 import GroceryListScreen   from './screens/GroceryListScreen';
 import RestaurantScreen    from './screens/RestaurantScreen';
 import MyInfoScreen        from './screens/MyInfoScreen';
@@ -49,6 +50,7 @@ function App() {
   const [screenParams, setScreenParams] = useState(null);
   const [user, setUser]     = useState(null);
   const [error, setError]   = useState(null);
+  const [pendingVerification, setPendingVerification] = useState(null);
 
   useEffect(() => { initStorage(); }, []);
 
@@ -151,7 +153,22 @@ function App() {
       case 'welcome':
         return <WelcomeScreen onStart={() => setScreen('auth')} />;
       case 'auth':
-        return <AuthScreen onLogin={handleLogin} initialMode="signup" />;
+        return (
+          <AuthScreen
+            onLogin={handleLogin}
+            initialMode="signup"
+            onNeedsVerification={(data) => { setPendingVerification(data); setScreen('verify'); }}
+          />
+        );
+      case 'verify':
+        return (
+          <VerificationScreen
+            uid={pendingVerification?.uid}
+            email={pendingVerification?.email}
+            onVerified={(u) => { setPendingVerification(null); handleLogin(u); }}
+            onBack={() => { setPendingVerification(null); setScreen('auth'); }}
+          />
+        );
       case 'onboarding':
         return <OnboardingScreen onComplete={handleOnboardingComplete} user={user} />;
       case 'home':    return <HomeScreen user={user} onNavigate={navigate} onUserUpdate={updateUser} />;

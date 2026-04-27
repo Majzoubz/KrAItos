@@ -9,7 +9,7 @@ import { useT } from '../i18n/I18nContext';
 import { Auth } from '../utils/auth';
 import BrandName from '../components/BrandName';
 
-export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
+export default function AuthScreen({ onLogin, onNeedsVerification, initialMode = 'signup' }) {
   const { C } = useTheme();
   const t = useT();
   const s = makeStyles(C);
@@ -60,6 +60,10 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
       const result = await Auth.signup(trimName, trimEmail, password);
       setLoading(false);
       if (result.error) { Alert.alert('Signup Failed', result.error); return; }
+      if (result.needsVerification) {
+        onNeedsVerification({ uid: result.uid, email: result.email, fullName: result.fullName });
+        return;
+      }
       onLogin(result.user);
     } else {
       if (!trimEmail || !password) {
@@ -68,7 +72,20 @@ export default function AuthScreen({ onLogin, initialMode = 'signup' }) {
       setLoading(true);
       const result = await Auth.login(trimEmail, password);
       setLoading(false);
-      if (result.error) { Alert.alert('Login Failed', result.error); return; }
+      if (result.error) {
+        if (result.needsVerification) {
+          Alert.alert(
+            'Email Not Verified',
+            'Please verify your email before logging in. Open your inbox and click the verification link.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Go to Verification', onPress: () => onNeedsVerification({ uid: result.uid, email: result.email, fullName: result.fullName }) },
+            ]
+          );
+          return;
+        }
+        Alert.alert('Login Failed', result.error); return;
+      }
       onLogin(result.user);
     }
   };

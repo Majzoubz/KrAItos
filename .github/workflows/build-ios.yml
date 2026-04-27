@@ -28,6 +28,7 @@ jobs:
           echo "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}" >> .env
           echo "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}" >> .env
           echo "EXPO_PUBLIC_FIREBASE_APP_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}" >> .env
+          echo "EXPO_PUBLIC_RESEND_KEY=${{ secrets.EXPO_PUBLIC_RESEND_KEY }}" >> .env
 
       - name: Generate native iOS folder
         run: npx expo prebuild --platform ios --clean
