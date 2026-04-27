@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/icon-generated.png",
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.greengain.app",
-      "icon": "./assets/logo.png",
+      "icon": "./assets/icon-generated.png",
       "infoPlist": {
         "NSCameraUsageDescription": "KrAItos uses the camera to scan your meal and analyze its nutritional content.",
         "NSPhotoLibraryUsageDescription": "KrAItos accesses your photo library so you can pick a meal photo for analysis.",
@@ -27,9 +27,9 @@
       }
     },
     "android": {
-      "icon": "./assets/logo.png",
+      "icon": "./assets/icon-generated.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/icon-foreground.png",
         "backgroundColor": "#000000"
       },
       "package": "com.greengain.app",

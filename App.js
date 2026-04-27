@@ -51,6 +51,7 @@ function App() {
   const [user, setUser]     = useState(null);
   const [error, setError]   = useState(null);
   const [pendingVerification, setPendingVerification] = useState(null);
+  const [authMode, setAuthMode] = useState('signup');
 
   useEffect(() => { initStorage(); }, []);
 
@@ -156,7 +157,7 @@ function App() {
         return (
           <AuthScreen
             onLogin={handleLogin}
-            initialMode="signup"
+            initialMode={authMode}
             onNeedsVerification={(data) => { setPendingVerification(data); setScreen('verify'); }}
           />
         );
@@ -165,8 +166,9 @@ function App() {
           <VerificationScreen
             uid={pendingVerification?.uid}
             email={pendingVerification?.email}
-            onVerified={(u) => { setPendingVerification(null); handleLogin(u); }}
-            onBack={() => { setPendingVerification(null); setScreen('auth'); }}
+            fullName={pendingVerification?.fullName}
+            onVerified={() => { setPendingVerification(null); setAuthMode('login'); setScreen('auth'); }}
+            onBack={() => { setPendingVerification(null); setAuthMode('signup'); setScreen('auth'); }}
           />
         );
       case 'onboarding':

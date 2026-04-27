@@ -29,7 +29,6 @@ export default function VerificationScreen({ uid, email, fullName, onVerified, o
   }, [timeLeft]);
 
   const handleDigit = (value, index) => {
-    // Handle paste
     if (value.length > 1) {
       const paste = value.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH);
       const next  = Array(OTP_LENGTH).fill('');
@@ -68,7 +67,11 @@ export default function VerificationScreen({ uid, email, fullName, onVerified, o
       inputRefs.current[0]?.focus();
       return;
     }
-    onVerified(result.user);
+    Alert.alert(
+      'Email Verified ✓',
+      'Your account is now verified. Please log in to continue.',
+      [{ text: 'Go to Login', onPress: onVerified }]
+    );
   };
 
   const resend = async () => {
@@ -88,10 +91,7 @@ export default function VerificationScreen({ uid, email, fullName, onVerified, o
   return (
     <View style={s.safe}>
       <View style={s.glowTop} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={s.container}>
           <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
           <Text style={s.envelope}>✉️</Text>
@@ -127,10 +127,7 @@ export default function VerificationScreen({ uid, email, fullName, onVerified, o
             disabled={loading}
             activeOpacity={0.85}
           >
-            {loading
-              ? <ActivityIndicator color={C.bg} />
-              : <Text style={s.btnText}>VERIFY EMAIL</Text>
-            }
+            {loading ? <ActivityIndicator color={C.bg} /> : <Text style={s.btnText}>VERIFY EMAIL</Text>}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -164,13 +161,13 @@ const makeStyles = (C) => StyleSheet.create({
     ...(Platform.OS === 'web' ? { filter: 'blur(120px)' } : { opacity: 0.15 }),
   },
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
-  logo: { width: 60, height: 60, marginBottom: 12 },
-  envelope: { fontSize: 48, marginBottom: 14 },
+  logo: { width: 60, height: 60, marginBottom: 10 },
+  envelope: { fontSize: 46, marginBottom: 14 },
   title: { color: C.white, fontSize: 26, fontWeight: '800', marginBottom: 8 },
   sub: { color: C.muted, fontSize: 14, marginBottom: 4 },
   email: { color: C.green, fontSize: 14, fontWeight: '700', marginBottom: 28 },
 
-  otpRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
+  otpRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   otpBox: {
     width: 46, height: 58, borderRadius: 14,
     backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border,
@@ -178,7 +175,7 @@ const makeStyles = (C) => StyleSheet.create({
   },
   otpBoxFilled: { borderColor: C.green, backgroundColor: C.green + '15' },
 
-  timer: { color: C.muted, fontSize: 13, marginBottom: 24 },
+  timer: { color: C.muted, fontSize: 13, marginBottom: 22 },
   timerExpired: { color: '#ff4444' },
 
   btn: {
